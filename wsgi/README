@@ -1,0 +1,10 @@
+This is a reflector program using Python and WSGI. The application
+string to put in your WSGI configuration is "reflect.main".
+
+To test locally, run:
+	python reflect.py
+
+It will listen on port 8000. Configure tor as:
+	UseBridges 1
+	Bridge meek 0.0.2.0:1
+	ClientTransportPlugin meek exec ./meek-client --url=http://127.0.0.1:8000/
