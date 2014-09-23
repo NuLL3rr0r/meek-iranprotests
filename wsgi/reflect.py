@@ -8,6 +8,7 @@ TIMEOUT = 20
 BUFSIZ = 2048
 
 REFLECTED_HEADER_FIELDS = [
+    "Content-Type",
     "X-Session-Id",
 ]
 
