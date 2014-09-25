@@ -273,7 +273,7 @@ MeekHTTPHelper.LocalConnectionHandler.prototype = {
             dump("req.method is " + JSON.stringify(req.method) + ", not \"POST\".\n");
             return false;
         }
-        if (!req.url.startsWith("https://")) {
+        if (!(req.url.startsWith("http://") || req.url.startsWith("https://"))) {
             dump("req.url doesn't start with \"https://\".\n");
             return false;
         }
