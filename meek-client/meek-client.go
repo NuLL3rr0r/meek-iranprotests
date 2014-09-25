@@ -82,6 +82,10 @@ const (
 
 var ptInfo pt.ClientInfo
 
+// This is the RoundTripper used to make all our requests (when --helper is not
+// used).
+var httpTransport http.Transport
+
 // Store for command line options.
 var options struct {
 	URL        string
@@ -110,13 +114,6 @@ type RequestInfo struct {
 // Do an HTTP roundtrip using the payload data in buf and the request metadata
 // in info.
 func roundTripWithHTTP(buf []byte, info *RequestInfo) (*http.Response, error) {
-	tr := new(http.Transport)
-	if options.ProxyURL != nil {
-		if options.ProxyURL.Scheme != "http" {
-			panic(fmt.Sprintf("don't know how to use proxy %s", options.ProxyURL.String()))
-		}
-		tr.Proxy = http.ProxyURL(options.ProxyURL)
-	}
 	req, err := http.NewRequest("POST", info.URL.String(), bytes.NewReader(buf))
 	if err != nil {
 		return nil, err
@@ -125,7 +122,7 @@ func roundTripWithHTTP(buf []byte, info *RequestInfo) (*http.Response, error) {
 		req.Host = info.Host
 	}
 	req.Header.Set("X-Session-Id", info.SessionID)
-	return tr.RoundTrip(req)
+	return httpTransport.RoundTrip(req)
 }
 
 // Do a roundtrip, trying at most limit times if there is an HTTP status other
@@ -394,6 +391,13 @@ func main() {
 		}
 	}
 
+	// We make a copy of DefaultTransport because we want the default Dial
+	// and TLSHandshakeTimeout settings. But we want to disable the default
+	// ProxyFromEnvironment setting. Proxy is overridden below if proxyURL
+	// is set.
+	httpTransport = *http.DefaultTransport.(*http.Transport)
+	httpTransport.Proxy = nil
+
 	ptInfo, err = pt.ClientSetup([]string{ptMethodName})
 	if err != nil {
 		log.Fatalf("error in ClientSetup: %s", err)
@@ -416,6 +420,7 @@ func main() {
 			log.Fatal(fmt.Sprintf("proxy error: %s", err))
 		}
 		log.Printf("using proxy %s", options.ProxyURL.String())
+		httpTransport.Proxy = http.ProxyURL(options.ProxyURL)
 		if ptProxyURL != nil {
 			PtProxyDone()
 		}
