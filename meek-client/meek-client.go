@@ -105,19 +105,17 @@ type RequestInfo struct {
 	// The Host header to put in the HTTP request (optional and may be
 	// different from the host name in URL).
 	Host string
-	// URL of an upstream proxy to use. If nil, no proxy is used.
-	ProxyURL *url.URL
 }
 
 // Do an HTTP roundtrip using the payload data in buf and the request metadata
 // in info.
 func roundTripWithHTTP(buf []byte, info *RequestInfo) (*http.Response, error) {
 	tr := new(http.Transport)
-	if info.ProxyURL != nil {
-		if info.ProxyURL.Scheme != "http" {
-			panic(fmt.Sprintf("don't know how to use proxy %s", info.ProxyURL.String()))
+	if options.ProxyURL != nil {
+		if options.ProxyURL.Scheme != "http" {
+			panic(fmt.Sprintf("don't know how to use proxy %s", options.ProxyURL.String()))
 		}
-		tr.Proxy = http.ProxyURL(info.ProxyURL)
+		tr.Proxy = http.ProxyURL(options.ProxyURL)
 	}
 	req, err := http.NewRequest("POST", info.URL.String(), bytes.NewReader(buf))
 	if err != nil {
@@ -303,18 +301,6 @@ func handler(conn *pt.SocksConn) error {
 		info.URL.Host = front
 	}
 
-	// First check proxy= SOCKS arg, then --proxy option/managed
-	// configuration.
-	proxy, ok := conn.Req.Args.Get("proxy")
-	if ok {
-		info.ProxyURL, err = url.Parse(proxy)
-		if err != nil {
-			return err
-		}
-	} else if options.ProxyURL != nil {
-		info.ProxyURL = options.ProxyURL
-	}
-
 	return copyLoop(conn, &info)
 }
 
@@ -380,7 +366,7 @@ func main() {
 	flag.StringVar(&options.Front, "front", "", "front domain name if no front= SOCKS arg")
 	flag.StringVar(&helperAddr, "helper", "", "address of HTTP helper (browser extension)")
 	flag.StringVar(&logFilename, "log", "", "name of log file")
-	flag.StringVar(&proxy, "proxy", "", "proxy URL if no proxy= SOCKS arg")
+	flag.StringVar(&proxy, "proxy", "", "proxy URL")
 	flag.StringVar(&options.URL, "url", "", "URL to request if no url= SOCKS arg")
 	flag.Parse()
 
