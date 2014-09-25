@@ -274,7 +274,7 @@ MeekHTTPHelper.LocalConnectionHandler.prototype = {
             return false;
         }
         if (!(req.url.startsWith("http://") || req.url.startsWith("https://"))) {
-            dump("req.url doesn't start with \"https://\".\n");
+            dump("req.url doesn't start with \"http://\" or \"https://\".\n");
             return false;
         }
 
