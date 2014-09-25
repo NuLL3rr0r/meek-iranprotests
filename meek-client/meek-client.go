@@ -344,8 +344,8 @@ func acceptLoop(ln *pt.SocksListener) error {
 func checkProxyURL(u *url.URL) error {
 	if options.HelperAddr == nil {
 		// Without the helper we only support HTTP proxies.
-		if options.ProxyURL.Scheme != "http" {
-			return errors.New(fmt.Sprintf("don't understand proxy URL scheme %q", options.ProxyURL.Scheme))
+		if u.Scheme != "http" {
+			return errors.New(fmt.Sprintf("don't understand proxy URL scheme %q", u.Scheme))
 		}
 	} else {
 		// With the helper we can use HTTP and SOCKS (because it is the
@@ -359,12 +359,12 @@ func checkProxyURL(u *url.URL) error {
 		// https://gitweb.torproject.org/tor-browser.git/commitdiff/e08b91c78d919f66dd5161561ca1ad7bcec9a563
 		// https://bugzilla.mozilla.org/show_bug.cgi?id=1017769
 		// https://hg.mozilla.org/mozilla-central/rev/a1f6458800d4
-		switch options.ProxyURL.Scheme {
+		switch u.Scheme {
 		case "http", "socks5", "socks4a":
 		default:
-			return errors.New(fmt.Sprintf("don't understand proxy URL scheme %q", options.ProxyURL.Scheme))
+			return errors.New(fmt.Sprintf("don't understand proxy URL scheme %q", u.Scheme))
 		}
-		if options.ProxyURL.User != nil {
+		if u.User != nil {
 			return errors.New("a proxy URL with a username or password can't be used with --helper")
 		}
 	}
