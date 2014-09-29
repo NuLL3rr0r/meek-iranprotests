@@ -7,24 +7,24 @@ import (
 
 func TestMakeProxySpec(t *testing.T) {
 	badTests := [...]url.URL{
-		url.URL{Scheme: "http"},
-		url.URL{Scheme: "http", Host: ":"},
-		url.URL{Scheme: "http", Host: "localhost"},
-		url.URL{Scheme: "http", Host: "localhost:"},
-		url.URL{Scheme: "http", Host: ":8080"},
-		url.URL{Scheme: "http", Host: "localhost:https"},
-		url.URL{Scheme: "http", Host: "localhost:8080", User: url.User("username")},
-		url.URL{Scheme: "http", Host: "localhost:8080", User: url.UserPassword("username", "password")},
-		url.URL{Scheme: "http", User: url.User("username"), Host: "localhost:8080"},
-		url.URL{Scheme: "http", User: url.UserPassword("username", "password"), Host: "localhost:8080"},
-		url.URL{Scheme: "http", Host: "localhost:-1"},
-		url.URL{Scheme: "http", Host: "localhost:65536"},
-		url.URL{Scheme: "socks5", Host: ":"},
-		url.URL{Scheme: "socks4a", Host: ":"},
+		{Scheme: "http"},
+		{Scheme: "http", Host: ":"},
+		{Scheme: "http", Host: "localhost"},
+		{Scheme: "http", Host: "localhost:"},
+		{Scheme: "http", Host: ":8080"},
+		{Scheme: "http", Host: "localhost:https"},
+		{Scheme: "http", Host: "localhost:8080", User: url.User("username")},
+		{Scheme: "http", Host: "localhost:8080", User: url.UserPassword("username", "password")},
+		{Scheme: "http", User: url.User("username"), Host: "localhost:8080"},
+		{Scheme: "http", User: url.UserPassword("username", "password"), Host: "localhost:8080"},
+		{Scheme: "http", Host: "localhost:-1"},
+		{Scheme: "http", Host: "localhost:65536"},
+		{Scheme: "socks5", Host: ":"},
+		{Scheme: "socks4a", Host: ":"},
 		// "socks" and "socks4" are unknown types.
-		url.URL{Scheme: "socks", Host: "localhost:1080"},
-		url.URL{Scheme: "socks4", Host: "localhost:1080"},
-		url.URL{Scheme: "unknown", Host: "localhost:9999"},
+		{Scheme: "socks", Host: "localhost:1080"},
+		{Scheme: "socks4", Host: "localhost:1080"},
+		{Scheme: "unknown", Host: "localhost:9999"},
 	}
 	goodTests := [...]struct {
 		input    url.URL
