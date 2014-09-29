@@ -150,7 +150,8 @@ func transact(session *Session, w http.ResponseWriter, req *http.Request) error 
 	body := http.MaxBytesReader(w, req.Body, maxPayloadLength+1)
 	_, err := io.Copy(session.Or, body)
 	if err != nil {
-		return fmt.Errorf("copying body to ORPort: %s", err)
+		// Omit err because it contains an IP address.
+		return fmt.Errorf("error copying body to ORPort")
 	}
 
 	buf := make([]byte, maxPayloadLength)
@@ -167,7 +168,8 @@ func transact(session *Session, w http.ResponseWriter, req *http.Request) error 
 	w.Header().Set("Content-Type", "application/octet-stream")
 	n, err = w.Write(buf[:n])
 	if err != nil {
-		return fmt.Errorf("writing to response: %s", err)
+		// Omit err because it contains an IP address.
+		return fmt.Errorf("error writing to response")
 	}
 	// log.Printf("wrote %d bytes to response", n)
 	return nil
