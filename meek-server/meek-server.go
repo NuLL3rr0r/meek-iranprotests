@@ -13,7 +13,6 @@ package main
 
 import (
 	"crypto/tls"
-	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -151,7 +150,7 @@ func transact(session *Session, w http.ResponseWriter, req *http.Request) error 
 	body := http.MaxBytesReader(w, req.Body, maxPayloadLength+1)
 	_, err := io.Copy(session.Or, body)
 	if err != nil {
-		return errors.New(fmt.Sprintf("copying body to ORPort: %s", err))
+		return fmt.Errorf("copying body to ORPort: %s", err)
 	}
 
 	buf := make([]byte, maxPayloadLength)
@@ -160,7 +159,7 @@ func transact(session *Session, w http.ResponseWriter, req *http.Request) error 
 	if err != nil {
 		if e, ok := err.(net.Error); !ok || !e.Timeout() {
 			httpInternalServerError(w)
-			return errors.New(fmt.Sprintf("reading from ORPort: %s", err))
+			return fmt.Errorf("reading from ORPort: %s", err)
 		}
 	}
 	// log.Printf("read %d bytes from ORPort: %q", n, buf[:n])
@@ -168,7 +167,7 @@ func transact(session *Session, w http.ResponseWriter, req *http.Request) error 
 	w.Header().Set("Content-Type", "application/octet-stream")
 	n, err = w.Write(buf[:n])
 	if err != nil {
-		return errors.New(fmt.Sprintf("writing to response: %s", err))
+		return fmt.Errorf("writing to response: %s", err)
 	}
 	// log.Printf("wrote %d bytes to response", n)
 	return nil

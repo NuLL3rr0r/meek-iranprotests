@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -55,14 +54,14 @@ func makeProxySpec(u *url.URL) (*ProxySpec, error) {
 
 	// Firefox's nsIProxyInfo doesn't allow credentials.
 	if u.User != nil {
-		return nil, errors.New("proxy URLs with a username or password can't be used with the helper")
+		return nil, fmt.Errorf("proxy URLs with a username or password can't be used with the helper")
 	}
 
 	switch u.Scheme {
 	case "http", "socks5", "socks4a":
 		spec.Type = u.Scheme
 	default:
-		return nil, errors.New("unknown scheme")
+		return nil, fmt.Errorf("unknown scheme")
 	}
 
 	spec.Host, portStr, err = net.SplitHostPort(u.Host)
@@ -70,7 +69,7 @@ func makeProxySpec(u *url.URL) (*ProxySpec, error) {
 		return nil, err
 	}
 	if spec.Host == "" {
-		return nil, errors.New("missing host")
+		return nil, fmt.Errorf("missing host")
 	}
 	port, err = strconv.ParseUint(portStr, 10, 16)
 	if err != nil {
@@ -130,8 +129,9 @@ func roundTripWithHelper(buf []byte, info *RequestInfo) (*http.Response, error) 
 		return nil, err
 	}
 	if length > maxHelperResponseLength {
-		return nil, errors.New(fmt.Sprintf("helper's returned data is too big (%d > %d)",
-			length, maxHelperResponseLength))
+		return nil, fmt.Errorf("helper's returned data is too big (%d > %d)",
+			length, maxHelperResponseLength)
+
 	}
 	encResp := make([]byte, length)
 	_, err = io.ReadFull(s, encResp)
@@ -147,7 +147,7 @@ func roundTripWithHelper(buf []byte, info *RequestInfo) (*http.Response, error) 
 		return nil, err
 	}
 	if jsonResp.Error != "" {
-		return nil, errors.New(fmt.Sprintf("helper returned error: %s", jsonResp.Error))
+		return nil, fmt.Errorf("helper returned error: %s", jsonResp.Error)
 	}
 
 	// Mock up an HTTP response.

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -33,10 +32,10 @@ func PtGetProxyURL() (*url.URL, error) {
 		return nil, err
 	}
 	if u.Scheme == "" {
-		return nil, errors.New("missing scheme")
+		return nil, fmt.Errorf("missing scheme")
 	}
 	if u.Host == "" {
-		return nil, errors.New("missing host")
+		return nil, fmt.Errorf("missing host")
 	}
 	return u, nil
 }

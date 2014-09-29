@@ -33,7 +33,6 @@ import (
 	"bytes"
 	"crypto/rand"
 	"encoding/base64"
-	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -147,7 +146,7 @@ again:
 	// returned a status other than 200. Other kinds of errors and success
 	// with 200 always return immediately.
 	if err == nil && resp.StatusCode != http.StatusOK {
-		err = errors.New(fmt.Sprintf("status code was %d, not %d", resp.StatusCode, http.StatusOK))
+		err = fmt.Errorf("status code was %d, not %d", resp.StatusCode, http.StatusOK)
 		if limit > 0 {
 			log.Printf("%s; trying again after %.f seconds (%d)", err, retryDelay.Seconds(), limit)
 			time.Sleep(retryDelay)
@@ -328,7 +327,7 @@ func checkProxyURL(u *url.URL) error {
 	if options.HelperAddr == nil {
 		// Without the helper we only support HTTP proxies.
 		if u.Scheme != "http" {
-			return errors.New(fmt.Sprintf("don't understand proxy URL scheme %q", u.Scheme))
+			return fmt.Errorf("don't understand proxy URL scheme %q", u.Scheme)
 		}
 	} else {
 		// With the helper we can use HTTP and SOCKS (because it is the
@@ -345,10 +344,10 @@ func checkProxyURL(u *url.URL) error {
 		switch u.Scheme {
 		case "http", "socks5", "socks4a":
 		default:
-			return errors.New(fmt.Sprintf("don't understand proxy URL scheme %q", u.Scheme))
+			return fmt.Errorf("don't understand proxy URL scheme %q", u.Scheme)
 		}
 		if u.User != nil {
-			return errors.New("a proxy URL with a username or password can't be used with --helper")
+			return fmt.Errorf("a proxy URL with a username or password can't be used with --helper")
 		}
 	}
 	return nil
