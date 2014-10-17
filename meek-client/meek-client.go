@@ -20,8 +20,8 @@
 // is the same as this one using command line options:
 // 	Bridge meek 0.0.2.0:1
 // 	ClientTransportPlugin meek exec ./meek-client --url=https://meek-reflect.appspot.com/ --front=www.google.com
-// The advantage of SOCKS args is that multiple Bridge lines can have different
-// configurations, but it requires a newer tor.
+// The command-line configuration interface is for compatibility with tor 0.2.4
+// and older, which doesn't support parameters on Bridge lines.
 //
 // The --helper option prevents this program from doing any network operations
 // itself. Rather, it will send all requests through a browser extension that
