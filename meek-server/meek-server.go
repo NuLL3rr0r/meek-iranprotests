@@ -248,6 +248,11 @@ func listenTLS(network string, addr *net.TCPAddr, certFilename, keyFilename stri
 		return nil, err
 	}
 
+	// Additionally disable SSLv3 because of the POODLE attack.
+	// http://googleonlinesecurity.blogspot.com/2014/10/this-poodle-bites-exploiting-ssl-30.html
+	// https://code.google.com/p/go/source/detail?r=ad9e191a51946e43f1abac8b6a2fefbf2291eea7
+	config.MinVersion = tls.VersionTLS10
+
 	tlsListener := tls.NewListener(conn, config)
 
 	return tlsListener, nil
