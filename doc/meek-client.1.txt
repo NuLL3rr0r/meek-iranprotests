@@ -11,7 +11,7 @@ meek-client - The meek client transport plugin
 
 SYNOPSIS
 --------
-**meek-client** **--url**=__URL__ **--front**=__DOMAIN__ [__OPTIONS__]
+**meek-client** [__OPTIONS__]
 
 DESCRIPTION
 -----------
