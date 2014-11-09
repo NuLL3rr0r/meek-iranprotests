@@ -1,8 +1,8 @@
 // meek-client is the client transport plugin for the meek pluggable transport.
 //
 // Sample usage in torrc:
-// 	Bridge meek 0.0.2.0:1
-// 	ClientTransportPlugin meek exec ./meek-client --url=https://meek-reflect.appspot.com/ --front=www.google.com --log meek-client.log
+// 	Bridge meek 0.0.2.0:1 url=https://meek-reflect.appspot.com/ front=www.google.com
+// 	ClientTransportPlugin meek exec ./meek-client
 // The transport ignores the bridge address 0.0.2.0:1 and instead connects to
 // the URL given by --url. When --front is given, the domain in the URL is
 // replaced by the front domain for the purpose of the DNS lookup, TCP
