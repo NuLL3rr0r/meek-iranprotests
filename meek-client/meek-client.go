@@ -268,17 +268,13 @@ func handler(conn *pt.SocksConn) error {
 	var info RequestInfo
 	info.SessionID = genSessionId()
 
-	// First check url= SOCKS arg, then --url option, then SOCKS target.
+	// First check url= SOCKS arg, then --url option.
 	urlArg, ok := conn.Req.Args.Get("url")
 	if ok {
 	} else if options.URL != "" {
 		urlArg = options.URL
 	} else {
-		urlArg = (&url.URL{
-			Scheme: "http",
-			Host:   conn.Req.Target,
-			Path:   "/",
-		}).String()
+		return fmt.Errorf("no URL for SOCKS request")
 	}
 	info.URL, err = url.Parse(urlArg)
 	if err != nil {
