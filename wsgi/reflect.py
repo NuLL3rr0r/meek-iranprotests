@@ -12,8 +12,8 @@ REFLECTED_HEADER_FIELDS = [
     "X-Session-Id",
 ]
 
-# Limits a file-like object to reading only n bytes. Used to keep limit
-# wsgi.input to the Content-Length, otherwise it blocks.
+# Limits a file-like object to reading only n bytes. Used to limit wsgi.input to
+# the Content-Length, otherwise it blocks.
 class LimitedReader(object):
     def __init__(self, f, n):
         self.f = f
