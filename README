@@ -58,6 +58,9 @@ latencytest:
 A test program for App Engine that measures roundtrip times to different
 destinations.
 
+nginx:
+A reflector configuration for Nginx.
+
 php:
 A php reflector similar to the appengine one above. Ideally, it can be run on
 any platform that supports php. A public instance is at:

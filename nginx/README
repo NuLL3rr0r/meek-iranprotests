@@ -1,0 +1,9 @@
+The file nginx.conf.example is an example configuration file for Nginx
+that shows how to run multiple virtual-host domain names, with one of
+them reflecting to an instance of meek-server. Clients can front behind
+one of the ordinary domain names in order to reach the reflector domain.
+
+Here is the matching client torrc configuration:
+	UseBridges 1
+	Bridge meek 0.0.2.0:1 url=https://meek-reflect.example.com/ front=www.example.com
+	ClientTransportPlugin meek exec ./meek-client --log meek-client.log
