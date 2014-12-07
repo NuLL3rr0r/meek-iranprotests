@@ -54,10 +54,6 @@ terminateprocess-buffer:
 An auxiliary program used on Windows to assist with cleanup of
 subprocesses.
 
-latencytest:
-A test program for App Engine that measures roundtrip times to different
-destinations.
-
 nginx:
 A reflector configuration for Nginx.
 
