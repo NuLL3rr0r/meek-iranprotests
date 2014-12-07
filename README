@@ -62,9 +62,9 @@ nginx:
 A reflector configuration for Nginx.
 
 php:
-A php reflector similar to the appengine one above. Ideally, it can be run on
-any platform that supports php. A public instance is at:
-https://meek-reflect.herokuapp.com/
+A PHP reflector. It can be run on any platform that supports PHP with
+the cURL library. A public instance is at
+https://meek-reflect.herokuapp.com/.
 
 wsgi:
 A WSGI Python reflector.
