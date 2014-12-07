@@ -46,7 +46,7 @@ chrome, firefox:
 Browser extensions for TLS camouflage.
 
 meek-client-torbrowser:
-An auxiliary program for the Tor Browser Bundle that runs a copy of
+An auxiliary program for within Tor Browser that runs a second copy of
 Firefox with the browser extension and then configures meek-client to
 use it as a helper.
 
