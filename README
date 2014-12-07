@@ -30,12 +30,6 @@ Firefox are in the chrome and firefox directories.
 
 Here is a summary of the programs that appear in subdirectories.
 
-meek-client:
-The client transport plugin, run by a censored client.
-
-meek-server:
-The server transport plugin, run on a Tor relay.
-
 appengine:
 Reflector web app that runs on Google App Engine. The reflector simply
 copies requests and responses to an instance of meek-server somewhere. A
@@ -45,14 +39,16 @@ https://meek-reflect.appspot.com/.
 chrome, firefox:
 Browser extensions for TLS camouflage.
 
+meek-client:
+The client transport plugin, run by a censored client.
+
 meek-client-torbrowser:
 An auxiliary program for within Tor Browser that runs a second copy of
 Firefox with the browser extension and then configures meek-client to
 use it as a helper.
 
-terminateprocess-buffer:
-An auxiliary program used on Windows to assist with cleanup of
-subprocesses.
+meek-server:
+The server transport plugin, run on a Tor relay.
 
 nginx:
 A reflector configuration for Nginx.
@@ -61,6 +57,10 @@ php:
 A PHP reflector. It can be run on any platform that supports PHP with
 the cURL library. A public instance is at
 https://meek-reflect.herokuapp.com/.
+
+terminateprocess-buffer:
+An auxiliary program used on Windows to assist with cleanup of
+subprocesses.
 
 wsgi:
 A WSGI Python reflector.
