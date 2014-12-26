@@ -1,4 +1,3 @@
-DataDirectory datadir
 UseBridges 1
 
 # Socks4Proxy localhost:1080
