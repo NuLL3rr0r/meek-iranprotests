@@ -212,6 +212,16 @@ MeekHTTPHelper.LocalConnectionHandler.prototype = {
         var uri = MeekHTTPHelper.ioService.newURI(req.url, null, null);
         this.channel = MeekHTTPHelper.httpProtocolHandler.newProxiedChannel(uri, proxyInfo, 0, null)
             .QueryInterface(Components.interfaces.nsIHttpChannel);
+        // Remove pre-set headers. Firefox's AddStandardRequestHeaders adds
+        // User-Agent, Accept, Accept-Language, and Accept-Encoding, and perhaps
+        // others. Just remove all of them.
+        var headers = [];
+        // https://developer.mozilla.org/en-US/docs/Mozilla/Tech/XPCOM/Reference/Interface/nsIHttpChannel#visitRequestHeaders%28%29
+        // https://developer.mozilla.org/en-US/docs/Mozilla/Tech/XPCOM/Reference/Interface/nsIHttpHeaderVisitor
+        this.channel.visitRequestHeaders({visitHeader: function(key, value) { headers.push(key); }})
+        for (var i = 0; i < headers.length; i++)
+            this.channel.setRequestHeader(headers[i], "", false);
+        // Set our own headers.
         if (req.header !== undefined) {
             for (var key in req.header) {
                 this.channel.setRequestHeader(key, req.header[key], false);
