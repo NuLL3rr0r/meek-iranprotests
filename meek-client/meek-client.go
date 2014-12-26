@@ -42,6 +42,7 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 )
@@ -54,7 +55,7 @@ const (
 	// long-lived session. We split a TCP stream across multiple HTTP
 	// requests, and those with the same session ID belong to the same
 	// stream.
-	sessionIdLength = 32
+	sessionIdLength = 8
 	// The size of the largest chunk of data we will read from the SOCKS
 	// port before forwarding it in a request, and the maximum size of a
 	// body we are willing to handle in a reply.
@@ -249,7 +250,7 @@ func genSessionId() string {
 	if err != nil {
 		panic(err.Error())
 	}
-	return base64.StdEncoding.EncodeToString(buf)
+	return strings.TrimRight(base64.StdEncoding.EncodeToString(buf), "=")
 }
 
 // Callback for new SOCKS requests.
