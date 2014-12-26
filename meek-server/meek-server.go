@@ -34,7 +34,7 @@ const (
 	// Reject session ids shorter than this, as a weak defense against
 	// client bugs that send an empty session id or something similarly
 	// likely to collide.
-	minSessionIdLength = 32
+	minSessionIdLength = 8
 	// The largest request body we are willing to process, and the largest
 	// chunk of data we'll send back in a response.
 	maxPayloadLength = 0x10000
