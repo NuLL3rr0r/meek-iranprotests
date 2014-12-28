@@ -11,7 +11,7 @@
 //      "url": "https://www.google.com/",
 //      "header": {
 //          "Host": "meek-reflect.appspot.com",
-//          "X-Session-Id": "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"}
+//          "X-Session-Id": "XXXXXXXXXXX"}
 //      },
 //      "proxy": {
 //          "type": "http",
