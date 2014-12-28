@@ -34,7 +34,7 @@ const (
 	// Reject session ids shorter than this, as a weak defense against
 	// client bugs that send an empty session id or something similarly
 	// likely to collide.
-	minSessionIdLength = 8
+	minSessionIDLength = 8
 	// The largest request body we are willing to process, and the largest
 	// chunk of data we'll send back in a response.
 	maxPayloadLength = 0x10000
@@ -124,20 +124,20 @@ func (state *State) Get(w http.ResponseWriter, req *http.Request) {
 
 // Look up a session by id, or create a new one (with its OR port connection) if
 // it doesn't already exist.
-func (state *State) GetSession(sessionId string, req *http.Request) (*Session, error) {
+func (state *State) GetSession(sessionID string, req *http.Request) (*Session, error) {
 	state.lock.Lock()
 	defer state.lock.Unlock()
 
-	session := state.sessionMap[sessionId]
+	session := state.sessionMap[sessionID]
 	if session == nil {
-		// log.Printf("unknown session id %q; creating new session", sessionId)
+		// log.Printf("unknown session id %q; creating new session", sessionID)
 
 		or, err := pt.DialOr(&ptInfo, req.RemoteAddr, ptMethodName)
 		if err != nil {
 			return nil, err
 		}
 		session = &Session{Or: or}
-		state.sessionMap[sessionId] = session
+		state.sessionMap[sessionID] = session
 	}
 	session.Touch()
 
@@ -177,13 +177,13 @@ func transact(session *Session, w http.ResponseWriter, req *http.Request) error 
 
 // Handle a POST request. Look up the session id and then do a transaction.
 func (state *State) Post(w http.ResponseWriter, req *http.Request) {
-	sessionId := req.Header.Get("X-Session-Id")
-	if len(sessionId) < minSessionIdLength {
+	sessionID := req.Header.Get("X-Session-Id")
+	if len(sessionID) < minSessionIDLength {
 		httpBadRequest(w)
 		return
 	}
 
-	session, err := state.GetSession(sessionId, req)
+	session, err := state.GetSession(sessionID, req)
 	if err != nil {
 		log.Print(err)
 		httpInternalServerError(w)
@@ -193,21 +193,21 @@ func (state *State) Post(w http.ResponseWriter, req *http.Request) {
 	err = transact(session, w, req)
 	if err != nil {
 		log.Print(err)
-		state.CloseSession(sessionId)
+		state.CloseSession(sessionID)
 		return
 	}
 }
 
 // Remove a session from the map and closes its corresponding OR port
 // connection. Does nothing if the session id is not known.
-func (state *State) CloseSession(sessionId string) {
+func (state *State) CloseSession(sessionID string) {
 	state.lock.Lock()
 	defer state.lock.Unlock()
-	// log.Printf("closing session %q", sessionId)
-	session, ok := state.sessionMap[sessionId]
+	// log.Printf("closing session %q", sessionID)
+	session, ok := state.sessionMap[sessionID]
 	if ok {
 		session.Or.Close()
-		delete(state.sessionMap, sessionId)
+		delete(state.sessionMap, sessionID)
 	}
 }
 
@@ -216,11 +216,11 @@ func (state *State) ExpireSessions() {
 	for {
 		time.Sleep(maxSessionStaleness / 2)
 		state.lock.Lock()
-		for sessionId, session := range state.sessionMap {
+		for sessionID, session := range state.sessionMap {
 			if session.IsExpired() {
-				// log.Printf("deleting expired session %q", sessionId)
+				// log.Printf("deleting expired session %q", sessionID)
 				session.Or.Close()
-				delete(state.sessionMap, sessionId)
+				delete(state.sessionMap, sessionID)
 			}
 		}
 		state.lock.Unlock()

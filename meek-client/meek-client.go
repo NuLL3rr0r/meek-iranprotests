@@ -55,7 +55,7 @@ const (
 	// long-lived session. We split a TCP stream across multiple HTTP
 	// requests, and those with the same session ID belong to the same
 	// stream.
-	sessionIdLength = 8
+	sessionIDLength = 8
 	// The size of the largest chunk of data we will read from the SOCKS
 	// port before forwarding it in a request, and the maximum size of a
 	// body we are willing to handle in a reply.
@@ -244,8 +244,8 @@ loop:
 	return nil
 }
 
-func genSessionId() string {
-	buf := make([]byte, sessionIdLength)
+func genSessionID() string {
+	buf := make([]byte, sessionIDLength)
 	_, err := rand.Read(buf)
 	if err != nil {
 		panic(err.Error())
@@ -267,7 +267,7 @@ func handler(conn *pt.SocksConn) error {
 	}
 
 	var info RequestInfo
-	info.SessionID = genSessionId()
+	info.SessionID = genSessionID()
 
 	// First check url= SOCKS arg, then --url option.
 	urlArg, ok := conn.Req.Args.Get("url")
