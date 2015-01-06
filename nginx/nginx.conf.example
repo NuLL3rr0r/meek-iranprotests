@@ -42,7 +42,7 @@ server {
 
 	# This is where the magic happens
 	location / {
-		# Proxy traffic all traffic received with the meek Host to
+		# Proxy all traffic received with the meek Host to
 		# a meek-server instance.
 		proxy_pass http://meek.bamsoftware.com:7002;
 
