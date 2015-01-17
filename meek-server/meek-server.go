@@ -144,14 +144,35 @@ func (state *State) GetSession(sessionID string, req *http.Request) (*Session, e
 	return session, nil
 }
 
+// scrubbedAddr is a phony net.Addr that returns "[scrubbed]" for all calls.
+type scrubbedAddr struct{}
+
+func (a scrubbedAddr) Network() string {
+	return "[scrubbed]"
+}
+func (a scrubbedAddr) String() string {
+	return "[scrubbed]"
+}
+
+// Replace the Addr in a net.OpError with "[scrubbed]" for logging.
+func scrubError(err error) error {
+	if operr, ok := err.(*net.OpError); ok {
+		// net.OpError contains Op, Net, Addr, and a subsidiary Err. The
+		// (Op, Net, Addr) part is responsible for error text prefixes
+		// like "read tcp X.X.X.X:YYYY:". We want that information but
+		// don't want to log the literal address.
+		operr.Addr = scrubbedAddr{}
+	}
+	return err
+}
+
 // Feed the body of req into the OR port, and write any data read from the OR
 // port back to w.
 func transact(session *Session, w http.ResponseWriter, req *http.Request) error {
 	body := http.MaxBytesReader(w, req.Body, maxPayloadLength+1)
 	_, err := io.Copy(session.Or, body)
 	if err != nil {
-		// Omit err because it contains an IP address.
-		return fmt.Errorf("error copying body to ORPort")
+		return fmt.Errorf("error copying body to ORPort: %s", scrubError(err))
 	}
 
 	buf := make([]byte, maxPayloadLength)
@@ -160,6 +181,7 @@ func transact(session *Session, w http.ResponseWriter, req *http.Request) error 
 	if err != nil {
 		if e, ok := err.(net.Error); !ok || !e.Timeout() {
 			httpInternalServerError(w)
+			// Don't scrub err here because it always refers to localhost.
 			return fmt.Errorf("reading from ORPort: %s", err)
 		}
 	}
@@ -168,8 +190,7 @@ func transact(session *Session, w http.ResponseWriter, req *http.Request) error 
 	w.Header().Set("Content-Type", "application/octet-stream")
 	n, err = w.Write(buf[:n])
 	if err != nil {
-		// Omit err because it contains an IP address.
-		return fmt.Errorf("error writing to response")
+		return fmt.Errorf("error writing to response: %s", scrubError(err))
 	}
 	// log.Printf("wrote %d bytes to response", n)
 	return nil
