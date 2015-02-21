@@ -17,7 +17,7 @@
 //          "type": "http",
 //          "host": "proxy.example.com",
 //          "port": 8080
-//      }
+//      },
 //      "body": "...base64..."
 //  }
 // The extension makes the request as commanded. It returns the response to the
