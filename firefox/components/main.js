@@ -434,15 +434,15 @@ MeekHTTPHelper.HttpStreamListener.prototype = {
     // https://developer.mozilla.org/en-US/docs/XPCOM_Interface_Reference/nsIStreamListener
     onDataAvailable: function(request, context, stream, sourceOffset, length) {
         // dump("onDataAvailable " + length + " bytes\n");
-        if (this.length + length > 1000000) {
-            request.cancel(Components.results.NS_ERROR_ILLEGAL_VALUE);
-            return;
-        }
         this.length += length;
         let input = Components.classes["@mozilla.org/binaryinputstream;1"]
             .createInstance(Components.interfaces.nsIBinaryInputStream);
         input.setInputStream(stream);
         this.body.push(String.fromCharCode.apply(null, input.readByteArray(length)));
+        if (this.length > 1000000) {
+            request.cancel(Components.results.NS_ERROR_ILLEGAL_VALUE);
+            return;
+        }
     },
 };
 
