@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	forwardURL = "http://meek.bamsoftware.com:7002/"
+	forwardURL = "https://meek.bamsoftware.com/"
 	// A timeout of 0 means to use the App Engine default (5 seconds).
 	urlFetchTimeout = 20 * time.Second
 )
@@ -48,7 +48,7 @@ func copyRequest(r *http.Request) (*http.Request, error) {
 		return nil, err
 	}
 	// Append the requested path to the path in forwardURL, so that
-	// forwardURL can be something like "http://example.com/reflect".
+	// forwardURL can be something like "https://example.com/reflect".
 	u.Path = pathJoin(u.Path, r.URL.Path)
 	c, err := http.NewRequest(r.Method, u.String(), r.Body)
 	if err != nil {

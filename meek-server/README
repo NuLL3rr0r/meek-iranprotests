@@ -11,7 +11,7 @@
 
 - To test your bridge on the clinet side, you can add a line like this to your torrc:
 
-	Bridge meek 0.0.2.0:1 url=http://my-bridge.example.com:7002/
+	Bridge meek 0.0.2.0:1 url=https://my-bridge.example.com:7443/
 
 # Important Note:
 

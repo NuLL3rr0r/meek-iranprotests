@@ -44,7 +44,7 @@ server {
 	location / {
 		# Proxy all traffic received with the meek Host to
 		# a meek-server instance.
-		proxy_pass http://meek.bamsoftware.com:7002;
+		proxy_pass https://meek.bamsoftware.com/;
 
 		# Disable logging for the reflector.
 		access_log off;

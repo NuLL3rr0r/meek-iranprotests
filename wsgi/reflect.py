@@ -3,7 +3,7 @@
 import httplib
 import urlparse
 
-FORWARD_URL = "http://meek.bamsoftware.com:7002/"
+FORWARD_URL = "https://meek.bamsoftware.com/"
 TIMEOUT = 20
 BUFSIZ = 2048
 

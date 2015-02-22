@@ -1,7 +1,7 @@
 <?php
 	// A PHP reflector for meek.
 
-	$forwardURL = "http://meek.bamsoftware.com:7002/";
+	$forwardURL = "https://meek.bamsoftware.com/";
 
 	$headerArray = array();
 	if (array_key_exists("HTTP_X_SESSION_ID", $_SERVER)) {
