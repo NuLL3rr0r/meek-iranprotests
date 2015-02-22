@@ -328,25 +328,23 @@ MeekHTTPHelper.RequestReader.prototype = {
 
     // nsIInputStreamCallback implementation.
     onInputStreamReady: function(inputStream) {
-        let input = Components.classes["@mozilla.org/binaryinputstream;1"]
-            .createInstance(Components.interfaces.nsIBinaryInputStream);
-        input.setInputStream(inputStream);
         try {
+            let input = Components.classes["@mozilla.org/binaryinputstream;1"]
+                .createInstance(Components.interfaces.nsIBinaryInputStream);
+            input.setInputStream(inputStream);
             switch (this.state) {
             case this.STATE_READING_LENGTH:
                 this.doStateReadingLength(input);
-                this.asyncWait();
                 break;
             case this.STATE_READING_OBJECT:
                 this.doStateReadingObject(input);
-                if (this.bytesToRead > 0)
-                    this.asyncWait();
                 break;
             }
+            if (this.state !== this.STATE_DONE)
+                this.asyncWait();
         } catch (e) {
-            dump("got exception " + e + "\n");
             this.transport.close(0);
-            return;
+            throw e;
         }
     },
 
@@ -363,14 +361,14 @@ MeekHTTPHelper.RequestReader.prototype = {
         if (this.bytesToRead > 0)
             return;
 
-        this.state = this.STATE_READING_OBJECT;
         let b = this.buf;
-        this.bytesToRead = (b[0] << 24) | (b[1] << 16) | (b[2] << 8) | b[3];
-        if (this.bytesToRead > 1000000) {
-            dump("Object length is too long (" + this.bytesToRead + "), ignoring.\n");
-            throw Components.results.NS_ERROR_FAILURE;
-        }
-        this.buf = new Uint8Array(this.bytesToRead);
+        let len = (b[0] << 24) | (b[1] << 16) | (b[2] << 8) | b[3];
+        if (len > 1000000)
+            throw Components.Exception("Object length is too large (" + len + " bytes)", Components.results.NS_ERROR_ILLEGAL_VALUE);
+
+        this.state = this.STATE_READING_OBJECT;
+        this.buf = new Uint8Array(len);
+        this.bytesToRead = this.buf.length;
     },
 
     doStateReadingObject: function(input) {
@@ -378,12 +376,16 @@ MeekHTTPHelper.RequestReader.prototype = {
         if (this.bytesToRead > 0)
             return;
 
-        this.state = this.STATE_DONE;
         let converter = Components.classes["@mozilla.org/intl/scriptableunicodeconverter"]
             .createInstance(Components.interfaces.nsIScriptableUnicodeConverter);
         converter.charset = "UTF-8";
         let s = converter.convertFromByteArray(this.buf, this.buf.length);
-        let req = JSON.parse(s);
+        req = JSON.parse(s);
+
+        this.state = this.STATE_DONE;
+        this.buf = null;
+        this.bytesToRead = 0;
+
         MeekHTTPHelper.refreshDeadline(this.transport, null);
         this.callback(req);
     },
