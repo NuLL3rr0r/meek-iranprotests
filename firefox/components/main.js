@@ -408,9 +408,17 @@ MeekHTTPHelper.HttpStreamListener.prototype = {
     },
     onStopRequest: function(req, context, status) {
         // dump("onStopRequest " + status + "\n");
-        let resp = {
-            status: context.responseStatus,
-        };
+        let resp = {};
+        try {
+            resp.status = context.responseStatus;
+        } catch (e) {
+            if (e instanceof Components.interfaces.nsIXPCException
+                && e.result == Components.results.NS_ERROR_NOT_AVAILABLE) {
+                // Reading context.responseStatus can fail in this way when
+                // there is no HTTP response; e.g., when the connection is
+                // reset.
+            }
+        }
         if (Components.isSuccessCode(status)) {
             resp.body = btoa(this.body.join(""));
         } else {
