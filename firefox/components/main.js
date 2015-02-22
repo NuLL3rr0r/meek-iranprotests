@@ -66,7 +66,7 @@ MeekHTTPHelper.prototype = {
             return;
 
         try {
-            var prefs = Components.classes["@mozilla.org/preferences-service;1"]
+            let prefs = Components.classes["@mozilla.org/preferences-service;1"]
                 .getService(Components.interfaces.nsIPrefBranch);
             // Allow unproxied DNS, working around a Tor Browser patch:
             // https://trac.torproject.org/projects/tor/ticket/11183#comment:6.
@@ -75,7 +75,7 @@ MeekHTTPHelper.prototype = {
             prefs.setBoolPref("network.proxy.socks_remote_dns", false);
 
             // https://developer.mozilla.org/en-US/docs/XPCOM_Interface_Reference/nsIServerSocket
-            var serverSocket = Components.classes["@mozilla.org/network/server-socket;1"]
+            let serverSocket = Components.classes["@mozilla.org/network/server-socket;1"]
                 .createInstance(Components.interfaces.nsIServerSocket);
             // Listen on an ephemeral port, loopback only, with default backlog.
             serverSocket.init(-1, true, -1);
@@ -87,11 +87,11 @@ MeekHTTPHelper.prototype = {
 
             // Block forever.
             // https://developer.mozilla.org/en-US/Add-ons/Code_snippets/Threads#Waiting_for_a_background_task_to_complete
-            var thread = Components.classes["@mozilla.org/thread-manager;1"].getService().currentThread;
+            let thread = Components.classes["@mozilla.org/thread-manager;1"].getService().currentThread;
             while (true)
                 thread.processNextEvent(true);
         } finally {
-            var app = Components.classes["@mozilla.org/toolkit/app-startup;1"]
+            let app = Components.classes["@mozilla.org/toolkit/app-startup;1"]
                 .getService(Components.interfaces.nsIAppStartup);
             app.quit(app.eForceQuit);
         }
@@ -126,7 +126,7 @@ MeekHTTPHelper.httpProtocolHandler = MeekHTTPHelper.ioService.getProtocolHandler
 
 // Set the transport to time out at the given absolute deadline.
 MeekHTTPHelper.refreshDeadline = function(transport, deadline) {
-    var timeout;
+    let timeout;
     if (deadline === null)
         timeout = 0xffffffff;
     else
@@ -136,7 +136,7 @@ MeekHTTPHelper.refreshDeadline = function(transport, deadline) {
 
 // Reverse-index the Components.results table.
 MeekHTTPHelper.lookupStatus = function(status) {
-    for (var name in Components.results) {
+    for (let name in Components.results) {
         if (Components.results[name] === status)
             return name;
     }
@@ -153,7 +153,7 @@ MeekHTTPHelper.lookupStatus = function(status) {
 //   {"type": "socks4a", "host": "example.com", "port": 1080}
 MeekHTTPHelper.buildProxyInfo = function(spec) {
     // https://developer.mozilla.org/en-US/docs/Mozilla/Tech/XPCOM/Reference/Interface/nsIProxyInfo#Constants
-    var flags = Components.interfaces.nsIProxyInfo.TRANSPARENT_PROXY_RESOLVES_HOST;
+    let flags = Components.interfaces.nsIProxyInfo.TRANSPARENT_PROXY_RESOLVES_HOST;
     if (spec === undefined) {
         // "direct"; i.e., no proxy. This is the default.
         return MeekHTTPHelper.proxyProtocolService.newProxyInfo("direct", "", 0, flags, 0xffffffff, null);
@@ -202,7 +202,7 @@ MeekHTTPHelper.LocalConnectionHandler.prototype = {
 
         // Check what proxy to use, if any.
         // dump("using proxy " + JSON.stringify(req.proxy) + "\n");
-        var proxyInfo = MeekHTTPHelper.buildProxyInfo(req.proxy);
+        let proxyInfo = MeekHTTPHelper.buildProxyInfo(req.proxy);
         if (proxyInfo === null) {
             this.returnResponse({"error": "can't create nsIProxyInfo from " + JSON.stringify(req.proxy)});
             return;
@@ -210,21 +210,21 @@ MeekHTTPHelper.LocalConnectionHandler.prototype = {
 
         // Construct an HTTP channel with the given nsIProxyInfo.
         // https://developer.mozilla.org/en-US/docs/XPCOM_Interface_Reference/nsIHttpChannel
-        var uri = MeekHTTPHelper.ioService.newURI(req.url, null, null);
+        let uri = MeekHTTPHelper.ioService.newURI(req.url, null, null);
         this.channel = MeekHTTPHelper.httpProtocolHandler.newProxiedChannel(uri, proxyInfo, 0, null)
             .QueryInterface(Components.interfaces.nsIHttpChannel);
         // Remove pre-set headers. Firefox's AddStandardRequestHeaders adds
         // User-Agent, Accept, Accept-Language, and Accept-Encoding, and perhaps
         // others. Just remove all of them.
-        var headers = [];
+        let headers = [];
         // https://developer.mozilla.org/en-US/docs/Mozilla/Tech/XPCOM/Reference/Interface/nsIHttpChannel#visitRequestHeaders%28%29
         // https://developer.mozilla.org/en-US/docs/Mozilla/Tech/XPCOM/Reference/Interface/nsIHttpHeaderVisitor
         this.channel.visitRequestHeaders({visitHeader: function(key, value) { headers.push(key); }})
-        for (var i = 0; i < headers.length; i++)
+        for (let i = 0; i < headers.length; i++)
             this.channel.setRequestHeader(headers[i], "", false);
         // Set our own headers.
         if (req.header !== undefined) {
-            for (var key in req.header) {
+            for (let key in req.header) {
                 this.channel.setRequestHeader(key, req.header[key], false);
             }
         }
@@ -247,18 +247,18 @@ MeekHTTPHelper.LocalConnectionHandler.prototype = {
 
     returnResponse: function(resp) {
         // dump("returnResponse " + JSON.stringify(resp) + "\n");
-        outputStream = this.transport.openOutputStream(Components.interfaces.nsITransport.OPEN_BLOCKING, 0, 0);
-        var output = Components.classes["@mozilla.org/binaryoutputstream;1"]
+        let outputStream = this.transport.openOutputStream(Components.interfaces.nsITransport.OPEN_BLOCKING, 0, 0);
+        let output = Components.classes["@mozilla.org/binaryoutputstream;1"]
             .createInstance(Components.interfaces.nsIBinaryOutputStream);
         output.setOutputStream(outputStream);
 
-        var converter = Components.classes["@mozilla.org/intl/scriptableunicodeconverter"]
+        let converter = Components.classes["@mozilla.org/intl/scriptableunicodeconverter"]
             .createInstance(Components.interfaces.nsIScriptableUnicodeConverter);
         converter.charset = "UTF-8";
-        var s = JSON.stringify(resp);
-        var data = converter.convertToByteArray(s);
+        let s = JSON.stringify(resp);
+        let data = converter.convertToByteArray(s);
 
-        var deadline = Date.now() + MeekHTTPHelper.LOCAL_WRITE_TIMEOUT * 1000;
+        let deadline = Date.now() + MeekHTTPHelper.LOCAL_WRITE_TIMEOUT * 1000;
         try {
             MeekHTTPHelper.refreshDeadline(this.transport, deadline);
             output.write32(data.length);
@@ -328,7 +328,7 @@ MeekHTTPHelper.RequestReader.prototype = {
 
     // nsIInputStreamCallback implementation.
     onInputStreamReady: function(inputStream) {
-        var input = Components.classes["@mozilla.org/binaryinputstream;1"]
+        let input = Components.classes["@mozilla.org/binaryinputstream;1"]
             .createInstance(Components.interfaces.nsIBinaryInputStream);
         input.setInputStream(inputStream);
         try {
@@ -352,8 +352,8 @@ MeekHTTPHelper.RequestReader.prototype = {
 
     // Read into this.buf (up to its capacity) and decrement this.bytesToRead.
     readIntoBuf: function(input) {
-        var n = Math.min(input.available(), this.bytesToRead);
-        var data = input.readByteArray(n);
+        let n = Math.min(input.available(), this.bytesToRead);
+        let data = input.readByteArray(n);
         this.buf.subarray(this.buf.length - this.bytesToRead).set(data);
         this.bytesToRead -= n;
     },
@@ -364,7 +364,7 @@ MeekHTTPHelper.RequestReader.prototype = {
             return;
 
         this.state = this.STATE_READING_OBJECT;
-        var b = this.buf;
+        let b = this.buf;
         this.bytesToRead = (b[0] << 24) | (b[1] << 16) | (b[2] << 8) | b[3];
         if (this.bytesToRead > 1000000) {
             dump("Object length is too long (" + this.bytesToRead + "), ignoring.\n");
@@ -379,11 +379,11 @@ MeekHTTPHelper.RequestReader.prototype = {
             return;
 
         this.state = this.STATE_DONE;
-        var converter = Components.classes["@mozilla.org/intl/scriptableunicodeconverter"]
+        let converter = Components.classes["@mozilla.org/intl/scriptableunicodeconverter"]
             .createInstance(Components.interfaces.nsIScriptableUnicodeConverter);
         converter.charset = "UTF-8";
-        var s = converter.convertFromByteArray(this.buf, this.buf.length);
-        var req = JSON.parse(s);
+        let s = converter.convertFromByteArray(this.buf, this.buf.length);
+        let req = JSON.parse(s);
         MeekHTTPHelper.refreshDeadline(this.transport, null);
         this.callback(req);
     },
@@ -406,7 +406,7 @@ MeekHTTPHelper.HttpStreamListener.prototype = {
     },
     onStopRequest: function(req, context, status) {
         // dump("onStopRequest " + status + "\n");
-        var resp = {
+        let resp = {
             status: context.responseStatus,
         };
         if (Components.isSuccessCode(status)) {
@@ -429,11 +429,11 @@ MeekHTTPHelper.HttpStreamListener.prototype = {
             return;
         }
         this.length += length;
-        var input = Components.classes["@mozilla.org/binaryinputstream;1"]
+        let input = Components.classes["@mozilla.org/binaryinputstream;1"]
             .createInstance(Components.interfaces.nsIBinaryInputStream);
         input.setInputStream(stream);
         this.body.push(String.fromCharCode.apply(null, input.readByteArray(length)));
     },
 };
 
-var NSGetFactory = XPCOMUtils.generateNSGetFactory([MeekHTTPHelper]);
+let NSGetFactory = XPCOMUtils.generateNSGetFactory([MeekHTTPHelper]);
