@@ -143,6 +143,31 @@ MeekHTTPHelper.lookupStatus = function(status) {
     return null;
 };
 
+// Enforce restrictions on what requests we are willing to make. These can
+// probably be loosened up. Try and rule out anything unexpected until we
+// know we need otherwise.
+MeekHTTPHelper.requestOk = function(req) {
+    if (req.method === undefined) {
+        dump("req missing \"method\".\n");
+        return false;
+    }
+    if (req.url === undefined) {
+        dump("req missing \"url\".\n");
+        return false;
+    }
+
+    if (req.method !== "POST") {
+        dump("req.method is " + JSON.stringify(req.method) + ", not \"POST\".\n");
+        return false;
+    }
+    if (!(req.url.startsWith("http://") || req.url.startsWith("https://"))) {
+        dump("req.url doesn't start with \"http://\" or \"https://\".\n");
+        return false;
+    }
+
+    return true;
+};
+
 // Return an nsIProxyInfo according to the given specification. Returns null on
 // error.
 // https://developer.mozilla.org/en-US/docs/XPCOM_Interface_Reference/nsIProxyInfo
@@ -222,7 +247,7 @@ MeekHTTPHelper.LocalConnectionHandler.prototype = {
 
     makeRequest: function(req) {
         // dump("makeRequest " + JSON.stringify(req) + "\n");
-        if (!this.requestOk(req)) {
+        if (!MeekHTTPHelper.requestOk(req)) {
             MeekHTTPHelper.sendResponse(this.transport, {"error": "request failed validation"});
             return;
         }
@@ -272,31 +297,6 @@ MeekHTTPHelper.LocalConnectionHandler.prototype = {
             MeekHTTPHelper.sendResponse(this.transport, resp);
         }.bind(this));
         this.channel.asyncOpen(this.listener, this.channel);
-    },
-
-    // Enforce restrictions on what requests we are willing to make. These can
-    // probably be loosened up. Try and rule out anything unexpected until we
-    // know we need otherwise.
-    requestOk: function(req) {
-        if (req.method === undefined) {
-            dump("req missing \"method\".\n");
-            return false;
-        }
-        if (req.url === undefined) {
-            dump("req missing \"url\".\n");
-            return false;
-        }
-
-        if (req.method !== "POST") {
-            dump("req.method is " + JSON.stringify(req.method) + ", not \"POST\".\n");
-            return false;
-        }
-        if (!(req.url.startsWith("http://") || req.url.startsWith("https://"))) {
-            dump("req.url doesn't start with \"http://\" or \"https://\".\n");
-            return false;
-        }
-
-        return true;
     },
 };
 
