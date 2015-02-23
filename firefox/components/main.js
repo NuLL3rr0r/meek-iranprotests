@@ -177,6 +177,33 @@ MeekHTTPHelper.buildProxyInfo = function(spec) {
     return null;
 };
 
+// Transmit an HTTP response over the given nsITransport. resp is an object with
+// keys perhaps including "status", "body", and "error".
+MeekHTTPHelper.sendResponse = function(transport, resp) {
+    // dump("sendResponse " + JSON.stringify(resp) + "\n");
+    let outputStream = transport.openOutputStream(Components.interfaces.nsITransport.OPEN_BLOCKING, 0, 0);
+    let output = Components.classes["@mozilla.org/binaryoutputstream;1"]
+        .createInstance(Components.interfaces.nsIBinaryOutputStream);
+    output.setOutputStream(outputStream);
+
+    let converter = Components.classes["@mozilla.org/intl/scriptableunicodeconverter"]
+        .createInstance(Components.interfaces.nsIScriptableUnicodeConverter);
+    converter.charset = "UTF-8";
+    let s = JSON.stringify(resp);
+    let data = converter.convertToByteArray(s);
+
+    let deadline = Date.now() + MeekHTTPHelper.LOCAL_WRITE_TIMEOUT * 1000;
+    try {
+        MeekHTTPHelper.refreshDeadline(transport, deadline);
+        output.write32(data.length);
+        MeekHTTPHelper.refreshDeadline(transport, deadline);
+        output.writeByteArray(data, data.length);
+        MeekHTTPHelper.refreshDeadline(transport, null);
+    } finally {
+        output.close();
+    }
+};
+
 // LocalConnectionHandler handles each new client connection received on the
 // socket opened by MeekHTTPHelper. It reads a JSON request, makes the request
 // on the Internet, and writes the result back to the socket. Error handling
@@ -196,7 +223,7 @@ MeekHTTPHelper.LocalConnectionHandler.prototype = {
     makeRequest: function(req) {
         // dump("makeRequest " + JSON.stringify(req) + "\n");
         if (!this.requestOk(req)) {
-            this.returnResponse({"error": "request failed validation"});
+            MeekHTTPHelper.sendResponse(this.transport, {"error": "request failed validation"});
             return;
         }
 
@@ -204,7 +231,7 @@ MeekHTTPHelper.LocalConnectionHandler.prototype = {
         // dump("using proxy " + JSON.stringify(req.proxy) + "\n");
         let proxyInfo = MeekHTTPHelper.buildProxyInfo(req.proxy);
         if (proxyInfo === null) {
-            this.returnResponse({"error": "can't create nsIProxyInfo from " + JSON.stringify(req.proxy)});
+            MeekHTTPHelper.sendResponse(this.transport, {"error": "can't create nsIProxyInfo from " + JSON.stringify(req.proxy)});
             return;
         }
 
@@ -241,33 +268,10 @@ MeekHTTPHelper.LocalConnectionHandler.prototype = {
         this.channel.requestMethod = req.method;
         this.channel.redirectionLimit = 0;
 
-        this.listener = new MeekHTTPHelper.HttpStreamListener(this.returnResponse.bind(this));
+        this.listener = new MeekHTTPHelper.HttpStreamListener(function(resp) {
+            MeekHTTPHelper.sendResponse(this.transport, resp);
+        }.bind(this));
         this.channel.asyncOpen(this.listener, this.channel);
-    },
-
-    returnResponse: function(resp) {
-        // dump("returnResponse " + JSON.stringify(resp) + "\n");
-        let outputStream = this.transport.openOutputStream(Components.interfaces.nsITransport.OPEN_BLOCKING, 0, 0);
-        let output = Components.classes["@mozilla.org/binaryoutputstream;1"]
-            .createInstance(Components.interfaces.nsIBinaryOutputStream);
-        output.setOutputStream(outputStream);
-
-        let converter = Components.classes["@mozilla.org/intl/scriptableunicodeconverter"]
-            .createInstance(Components.interfaces.nsIScriptableUnicodeConverter);
-        converter.charset = "UTF-8";
-        let s = JSON.stringify(resp);
-        let data = converter.convertToByteArray(s);
-
-        let deadline = Date.now() + MeekHTTPHelper.LOCAL_WRITE_TIMEOUT * 1000;
-        try {
-            MeekHTTPHelper.refreshDeadline(this.transport, deadline);
-            output.write32(data.length);
-            MeekHTTPHelper.refreshDeadline(this.transport, deadline);
-            output.writeByteArray(data, data.length);
-            MeekHTTPHelper.refreshDeadline(this.transport, null);
-        } finally {
-            output.close();
-        }
     },
 
     // Enforce restrictions on what requests we are willing to make. These can
