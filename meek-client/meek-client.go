@@ -335,7 +335,7 @@ func checkProxyURL(u *url.URL) error {
 		// HTTP proxy cannot provide effective obfuscation without such
 		// a patched Firefox.
 		// https://trac.torproject.org/projects/tor/ticket/12146
-		// https://gitweb.torproject.org/tor-browser.git/commitdiff/e08b91c78d919f66dd5161561ca1ad7bcec9a563
+		// https://gitweb.torproject.org/tor-browser.git/commit/?id=e08b91c78d919f66dd5161561ca1ad7bcec9a563
 		// https://bugzilla.mozilla.org/show_bug.cgi?id=1017769
 		// https://hg.mozilla.org/mozilla-central/rev/a1f6458800d4
 		switch u.Scheme {

@@ -12,7 +12,7 @@ import "git.torproject.org/pluggable-transports/goptlib.git"
 // through the command line or the managed interface of proposal 232
 // (TOR_PT_PROXY).
 //
-// https://gitweb.torproject.org/torspec.git/blob/HEAD:/proposals/232-pluggable-transports-through-proxy.txt
+// https://gitweb.torproject.org/torspec.git/tree/proposals/232-pluggable-transports-through-proxy.txt
 
 // Get the upstream proxy URL. Returns nil if no proxy is requested. The
 // function ensures that the Scheme and Host fields are set; i.e., that the URL
