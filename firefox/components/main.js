@@ -272,8 +272,10 @@ MeekHTTPHelper.LocalConnectionHandler.prototype = {
         // https://developer.mozilla.org/en-US/docs/Mozilla/Tech/XPCOM/Reference/Interface/nsIHttpChannel#visitRequestHeaders%28%29
         // https://developer.mozilla.org/en-US/docs/Mozilla/Tech/XPCOM/Reference/Interface/nsIHttpHeaderVisitor
         this.channel.visitRequestHeaders({visitHeader: function(key, value) { headers.push(key); }})
-        for (let i = 0; i < headers.length; i++)
-            this.channel.setRequestHeader(headers[i], "", false);
+        for (let i = 0; i < headers.length; i++) {
+            if (headers[i] !== "Host")
+                this.channel.setRequestHeader(headers[i], "", false);
+        }
         // Set our own headers.
         if (req.header !== undefined) {
             for (let key in req.header) {
