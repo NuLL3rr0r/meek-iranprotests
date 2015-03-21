@@ -386,7 +386,7 @@ MeekHTTPHelper.RequestReader.prototype = {
             .createInstance(Components.interfaces.nsIScriptableUnicodeConverter);
         converter.charset = "UTF-8";
         let s = converter.convertFromByteArray(this.buf, this.buf.length);
-        req = JSON.parse(s);
+        let req = JSON.parse(s);
 
         this.state = this.STATE_DONE;
         this.buf = null;
