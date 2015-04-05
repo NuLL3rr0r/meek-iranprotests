@@ -18,14 +18,6 @@
 // This program proxies stdin and stdout to and from meek-client, so it is
 // actually meek-client that drives the pluggable transport negotiation with
 // tor.
-//
-// The special --exit-on-stdin-eof is a special workaround for Windows. On
-// Windows we don't get a detectable shutdown signal that allows us to kill the
-// subprocesses we've started. Instead, use the --exit-on-stdin-eof option and
-// run this program inside of terminateprocess-buffer. When
-// terminateprocess-buffer is killed, it will close our stdin, and we can exit
-// gracefully. --exit-on-stdin-eof and terminateprocess-buffer need to be used
-// together.
 package main
 
 import (
@@ -138,12 +130,10 @@ func runMeekClient(helperAddr string, meekClientCommandLine []string) (cmd *exec
 }
 
 func main() {
-	var exitOnStdinEOF bool
 	var logFilename string
 	var err error
 
 	flag.Usage = usage
-	flag.BoolVar(&exitOnStdinEOF, "exit-on-stdin-eof", false, "exit when stdin is closed (use with terminateprocess-buffer)")
 	flag.StringVar(&logFilename, "log", "", "name of log file")
 	flag.Parse()
 
@@ -182,13 +172,10 @@ func main() {
 	}
 	defer logKill(meekClientCmd.Process)
 
-	if exitOnStdinEOF {
-		// On Windows, we don't get a SIGINT or SIGTERM, rather we are
-		// killed without a chance to clean up our subprocesses. When
-		// run inside terminateprocess-buffer, it is instead
-		// terminateprocess-buffer that is killed, and we can detect
-		// that event by that our stdin gets closed.
-		// https://trac.torproject.org/projects/tor/ticket/9330
+	if os.Getenv("TOR_PT_EXIT_ON_STDIN_CLOSE") == "1" {
+		// This environment variable means we should treat EOF on stdin
+		// just like SIGTERM.
+		// https://trac.torproject.org/projects/tor/ticket/15435
 		go func() {
 			io.Copy(ioutil.Discard, os.Stdin)
 			log.Printf("synthesizing SIGTERM because of stdin close")
