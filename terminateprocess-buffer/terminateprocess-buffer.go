@@ -1,11 +1,18 @@
-// The terminateprocess-buffer program is designed to act as a
-// TerminateProcess-absorbing buffer between tor and a transport plugin on
-// Windows. On Windows, transport plugins are killed with a TerminateProcess,
-// which doesn't give them a chance to clean up before exiting.
-// https://trac.torproject.org/projects/tor/ticket/9330
-// The idea of this program is that the transport plugin can read from its
-// standard input, which will be closed when this program is terminated. The
-// transport plugin can then treat the stdin-closed event like a SIGTERM.
+// This program simulates support for TOR_PT_EXIT_ON_STDIN_CLOSE for versions of
+// tor without it. It sets TOR_PT_EXIT_ON_STDIN_CLOSE=1, then sits between tor
+// and a transport plugin and keeps the plugin's stdin open. (Versions of tor
+// that do not support TOR_PT_EXIT_ON_STDIN_CLOSE instead close the plugin's
+// stdin immediately.)
+//
+// This is mainly useful on Windows, where, before TOR_PT_EXIT_ON_STDIN_CLOSE,
+// tor kills child processes with TerminateProcess, which doesn't give them a
+// chance to clean up. When you put this program in between tor and the plugin,
+// it is this program that is killed (and has its stdout closed) by
+// TerminateProcess. The plugin can then obey TOR_PT_EXIT_ON_STDIN_CLOSE=1,
+// notice that its stdin has closed, and exit gracefully.
+//
+// TOR_PT_EXIT_ON_STDIN_CLOSE:
+// https://trac.torproject.org/projects/tor/ticket/15435
 package main
 
 import (
@@ -20,6 +27,10 @@ func main() {
 	if len(args) < 1 {
 		log.Fatalf("%s needs a command to run", os.Args[0])
 	}
+	err := os.Setenv("TOR_PT_EXIT_ON_STDIN_CLOSE", "1")
+	if err != nil {
+		log.Fatal(err)
+	}
 	cmd := exec.Command(args[0], args[1:]...)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
@@ -32,6 +43,7 @@ func main() {
 		log.Fatal(err)
 	}
 	io.Copy(stdin, os.Stdin)
+	stdin.Close()
 	err = cmd.Wait()
 	if err != nil {
 		log.Fatal(err)
