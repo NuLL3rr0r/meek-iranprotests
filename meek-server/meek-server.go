@@ -56,11 +56,11 @@ var ptInfo pt.ServerInfo
 var handlerChan = make(chan int)
 
 func httpBadRequest(w http.ResponseWriter) {
-	http.Error(w, "Bad request.\n", http.StatusBadRequest)
+	http.Error(w, "Bad request.", http.StatusBadRequest)
 }
 
 func httpInternalServerError(w http.ResponseWriter) {
-	http.Error(w, "Internal server error.\n", http.StatusInternalServerError)
+	http.Error(w, "Internal server error.", http.StatusInternalServerError)
 }
 
 // Every session id maps to an existing OR port connection, which we keep open
