@@ -25,7 +25,7 @@ class LimitedReader(object):
     def read(self, size=None):
         if self.n <= 0:
             return ""
-        if size is not None and size > self.n:
+        if size is None or size > self.n:
             size = self.n
         data = self.f.read(size)
         self.n -= len(data)
