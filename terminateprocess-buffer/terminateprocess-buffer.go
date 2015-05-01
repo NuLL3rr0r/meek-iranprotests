@@ -43,7 +43,6 @@ func main() {
 		log.Fatal(err)
 	}
 	io.Copy(stdin, os.Stdin)
-	stdin.Close()
 	err = cmd.Wait()
 	if err != nil {
 		log.Fatal(err)
