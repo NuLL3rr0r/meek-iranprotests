@@ -66,6 +66,16 @@ MeekHTTPHelper.prototype = {
             return;
 
         try {
+            // Flush the preferences to disk so that pref values that were
+            // updated during startup are not lost, e.g., ones related to
+            // browser updates.
+            // We do this before we change the network.proxy.socks_remote_dns
+            // value since we do not want that change to be permanent.
+            let prefSvc =
+                      Components.classes["@mozilla.org/preferences-service;1"]
+                      .getService(Components.interfaces.nsIPrefService);
+            prefSvc.savePrefFile(null);
+
             let prefs = Components.classes["@mozilla.org/preferences-service;1"]
                 .getService(Components.interfaces.nsIPrefBranch);
             // Allow unproxied DNS, working around a Tor Browser patch:
