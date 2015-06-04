@@ -70,10 +70,10 @@ MeekHTTPHelper.prototype = {
             // updated during startup are not lost, e.g., ones related to
             // browser updates.
             // We do this before we change the network.proxy.socks_remote_dns
-            // value since we do not want that change to be permanent.
-            let prefSvc =
-                      Components.classes["@mozilla.org/preferences-service;1"]
-                      .getService(Components.interfaces.nsIPrefService);
+            // value since we do not want that change to be permanent. See
+            // https://trac.torproject.org/projects/tor/ticket/16269.
+            let prefSvc = Components.classes["@mozilla.org/preferences-service;1"]
+                .getService(Components.interfaces.nsIPrefService);
             prefSvc.savePrefFile(null);
 
             let prefs = Components.classes["@mozilla.org/preferences-service;1"]
