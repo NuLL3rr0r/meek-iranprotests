@@ -389,8 +389,8 @@ func main() {
 
 	// We make a copy of DefaultTransport because we want the default Dial
 	// and TLSHandshakeTimeout settings. But we want to disable the default
-	// ProxyFromEnvironment setting. Proxy is overridden below if proxyURL
-	// is set.
+	// ProxyFromEnvironment setting. Proxy is overridden below if
+	// options.ProxyURL is set.
 	httpTransport = *http.DefaultTransport.(*http.Transport)
 	httpTransport.Proxy = nil
 
@@ -398,27 +398,22 @@ func main() {
 	if err != nil {
 		log.Fatalf("error in ClientSetup: %s", err)
 	}
-	ptProxyURL, err := PtGetProxyURL()
-	if err != nil {
-		PtProxyError(err.Error())
-		log.Fatalf("can't get managed proxy configuration: %s", err)
-	}
 
 	// Command-line proxy overrides managed configuration.
 	if options.ProxyURL == nil {
-		options.ProxyURL = ptProxyURL
+		options.ProxyURL = ptInfo.ProxyURL
 	}
 	// Check whether we support this kind of proxy.
 	if options.ProxyURL != nil {
 		err = checkProxyURL(options.ProxyURL)
 		if err != nil {
-			PtProxyError(err.Error())
+			pt.ProxyError(err.Error())
 			log.Fatal(fmt.Sprintf("proxy error: %s", err))
 		}
 		log.Printf("using proxy %s", options.ProxyURL.String())
 		httpTransport.Proxy = http.ProxyURL(options.ProxyURL)
-		if ptProxyURL != nil {
-			PtProxyDone()
+		if ptInfo.ProxyURL != nil {
+			pt.ProxyDone()
 		}
 	}
 
