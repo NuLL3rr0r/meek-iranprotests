@@ -131,7 +131,6 @@ func runMeekClient(helperAddr string, meekClientCommandLine []string) (cmd *exec
 
 func main() {
 	var logFilename string
-	var err error
 
 	flag.Usage = usage
 	flag.StringVar(&logFilename, "log", "", "name of log file")
