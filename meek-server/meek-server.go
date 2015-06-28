@@ -348,7 +348,7 @@ func main() {
 	}
 
 	var err error
-	ptInfo, err = pt.ServerSetup([]string{ptMethodName})
+	ptInfo, err = pt.ServerSetup(nil)
 	if err != nil {
 		log.Fatalf("error in ServerSetup: %s", err)
 	}

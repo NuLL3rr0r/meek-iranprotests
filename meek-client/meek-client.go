@@ -394,7 +394,7 @@ func main() {
 	httpTransport = *http.DefaultTransport.(*http.Transport)
 	httpTransport.Proxy = nil
 
-	ptInfo, err = pt.ClientSetup([]string{ptMethodName})
+	ptInfo, err = pt.ClientSetup(nil)
 	if err != nil {
 		log.Fatalf("error in ClientSetup: %s", err)
 	}
