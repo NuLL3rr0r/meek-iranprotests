@@ -303,10 +303,10 @@ func acceptLoop(ln *pt.SocksListener) error {
 		conn, err := ln.AcceptSocks()
 		if err != nil {
 			log.Printf("error in AcceptSocks: %s", err)
-			if e, ok := err.(net.Error); ok && !e.Temporary() {
-				return err
+			if e, ok := err.(net.Error); ok && e.Temporary() {
+				continue
 			}
-			continue
+			return err
 		}
 		go func() {
 			err := handler(conn)
