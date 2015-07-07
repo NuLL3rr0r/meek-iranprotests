@@ -14,8 +14,8 @@ import (
 	"time"
 )
 
-// The code in this file has to do communicating with the meek-http-helper
-// browser extension.
+// The code in this file has to do with communication between meek-client and
+// the meek-http-helper browser extension.
 
 type JSONRequest struct {
 	Method string            `json:"method,omitempty"`
