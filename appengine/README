@@ -4,7 +4,7 @@ client and forwards them to the server, then receives responses from the
 server and forwards them to the client.
 
 You need the Go App Engine SDK in order to deploy the app.
-	https://developers.google.com/appengine/downloads#Google_App_Engine_SDK_for_Go
+	https://cloud.google.com/appengine/downloads#Google_App_Engine_SDK_for_Go
 
 To test locally, run
 	go_appengine/goapp serve
