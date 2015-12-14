@@ -29,7 +29,10 @@ func originalClientIP(req *http.Request) (net.IP, error) {
 	var host string
 	var err error
 
-	xForwardedFor := req.Header.Get("X-Forwarded-For")
+	xForwardedFor := req.Header.Get("Meek-IP")
+	if xForwardedFor == "" {
+		xForwardedFor = req.Header.Get("X-Forwarded-For")
+	}
 	if xForwardedFor != "" {
 		host, err = getXForwardedFor(xForwardedFor)
 	} else {

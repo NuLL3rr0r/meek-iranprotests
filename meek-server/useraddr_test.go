@@ -45,7 +45,8 @@ func TestOriginalClientIPRemoteAddr(t *testing.T) {
 	}
 }
 
-// Test that originalClientIP reads the X-Forwarded-For header if present.
+// Test that originalClientIP reads the Meek-IP and X-Forwarded-For headers if
+// present.
 func TestOriginalClientXForwardedFor(t *testing.T) {
 	tests := []struct {
 		XForwardedFor string
@@ -73,6 +74,8 @@ func TestOriginalClientXForwardedFor(t *testing.T) {
 		req := &http.Request{
 			Header: make(http.Header),
 		}
+		req.Header.Set("Meek-IP", test.XForwardedFor)
+		checkExpected(t, req, test.Expected)
 		req.Header.Set("X-Forwarded-For", test.XForwardedFor)
 		checkExpected(t, req, test.Expected)
 	}
@@ -99,6 +102,24 @@ func TestOriginalClientPrecedence(t *testing.T) {
 			http.Request{
 				RemoteAddr: "5.6.7.8:5678",
 				Header: http.Header{
+					http.CanonicalHeaderKey("Meek-IP"): []string{"1.2.3.4"},
+				},
+			},
+			net.IPv4(1, 2, 3, 4),
+		},
+		{
+			http.Request{
+				RemoteAddr: "5.6.7.8:5678",
+				Header: http.Header{
+					http.CanonicalHeaderKey("Meek-IP"): []string{"1:2::3:4"},
+				},
+			},
+			net.IP{0, 1, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 4},
+		},
+		{
+			http.Request{
+				RemoteAddr: "5.6.7.8:5678",
+				Header: http.Header{
 					http.CanonicalHeaderKey("X-Forwarded-For"): []string{"1.2.3.4"},
 				},
 			},
@@ -112,6 +133,17 @@ func TestOriginalClientPrecedence(t *testing.T) {
 				},
 			},
 			net.IP{0, 1, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 4},
+		},
+		// Meek-IP has precedence over X-Forwarded-For if both are set.
+		{
+			http.Request{
+				RemoteAddr: "5.6.7.8:5678",
+				Header: http.Header{
+					http.CanonicalHeaderKey("Meek-IP"):         []string{"1.2.3.4"},
+					http.CanonicalHeaderKey("X-Forwarded-For"): []string{"2.2.2.2"},
+				},
+			},
+			net.IPv4(1, 2, 3, 4),
 		},
 		// X-Forwarded-For shadows RemoteAddr, even if bad syntax.
 		{
