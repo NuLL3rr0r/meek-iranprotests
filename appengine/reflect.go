@@ -5,6 +5,7 @@ package reflect
 import (
 	"io"
 	"net/http"
+	"net"
 	"net/url"
 	"time"
 
@@ -40,6 +41,17 @@ var reflectedHeaderFields = []string{
 	"X-Session-Id",
 }
 
+// Get the original client IP address as a string. When using the standard
+// net/http server, Request.RemoteAddr is a "host:port" string; however App
+// Engine seems to use just "host". We check for both to be safe.
+func getClientAddr(r *http.Request) string {
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err == nil {
+		return host
+	}
+	return r.RemoteAddr
+}
+
 // Make a copy of r, with the URL being changed to be relative to forwardURL,
 // and including only the headers in reflectedHeaderFields.
 func copyRequest(r *http.Request) (*http.Request, error) {
@@ -60,6 +72,12 @@ func copyRequest(r *http.Request) (*http.Request, error) {
 			c.Header.Add(key, value)
 		}
 	}
+	// Set the original client IP address in a Meek-IP header. We would use
+	// X-Forwarded-For, but App Engine prohibits setting that header:
+	// https://cloud.google.com/appengine/docs/go/urlfetch/#Go_Request_headers
+	// We could use Forwarded from RFC 7239, but other CDNs already use
+	// X-Forwarded-For and this way we only need one parser.
+	c.Header.Add("Meek-IP", getClientAddr(r))
 	return c, nil
 }
 
