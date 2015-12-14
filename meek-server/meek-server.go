@@ -122,6 +122,18 @@ func (state *State) Get(w http.ResponseWriter, req *http.Request) {
 	w.Write([]byte("I’m just a happy little web server.\n"))
 }
 
+// Get a string representing the original client address, if available, as a
+// "host:port" string suitable to pass as the addr parameter to pt.DialOr. Never
+// fails: if the original client address is not available, returns "". If the
+// original client address is available, the returned port number is always 1.
+func getUseraddr(req *http.Request) string {
+	ip, err := originalClientIP(req)
+	if err != nil {
+		return ""
+	}
+	return net.JoinHostPort(ip.String(), "1")
+}
+
 // Look up a session by id, or create a new one (with its OR port connection) if
 // it doesn't already exist.
 func (state *State) GetSession(sessionID string, req *http.Request) (*Session, error) {
@@ -132,7 +144,7 @@ func (state *State) GetSession(sessionID string, req *http.Request) (*Session, e
 	if session == nil {
 		// log.Printf("unknown session id %q; creating new session", sessionID)
 
-		or, err := pt.DialOr(&ptInfo, req.RemoteAddr, ptMethodName)
+		or, err := pt.DialOr(&ptInfo, getUseraddr(req), ptMethodName)
 		if err != nil {
 			return nil, err
 		}
