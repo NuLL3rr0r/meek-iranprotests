@@ -261,7 +261,7 @@ func handler(conn *pt.SocksConn) error {
 	}()
 
 	defer conn.Close()
-	err := conn.Grant(&net.TCPAddr{IP: net.ParseIP("0.0.0.0"), Port: 0})
+	err := conn.Grant(&net.TCPAddr{IP: net.IPv4zero, Port: 0})
 	if err != nil {
 		return err
 	}
