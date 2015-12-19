@@ -1,6 +1,6 @@
 // This file is asciidoc source code.
 // To generate manpages, use the a2x command i.e.
-// a2x --no-xmllint -d manpage -f manpage meek-client.1.txt
+// a2x --no-xmllint -d manpage -f manpage meek-server.1.txt
 // see http://www.methods.co.nz/asciidoc/userguide.html#X1
 MEEK-SERVER(1)
 ==============
