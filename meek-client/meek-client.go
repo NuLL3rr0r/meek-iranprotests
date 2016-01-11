@@ -45,9 +45,9 @@ import (
 	"strings"
 	"syscall"
 	"time"
-)
 
-import "git.torproject.org/pluggable-transports/goptlib.git"
+	"git.torproject.org/pluggable-transports/goptlib.git"
+)
 
 const (
 	ptMethodName = "meek"
