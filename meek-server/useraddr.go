@@ -44,7 +44,7 @@ func originalClientIP(req *http.Request) (net.IP, error) {
 
 	ip := net.ParseIP(host)
 	if ip == nil {
-		return nil, fmt.Errorf("cannot parse %q as IP address")
+		return nil, fmt.Errorf("cannot parse %q as IP address", host)
 	}
 	return ip, nil
 }
