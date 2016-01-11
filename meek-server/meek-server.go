@@ -30,6 +30,8 @@ import (
 )
 
 const (
+	programVersion = "0.21"
+
 	ptMethodName = "meek"
 	// Reject session ids shorter than this, as a weak defense against
 	// client bugs that send an empty session id or something similarly
@@ -365,7 +367,7 @@ func main() {
 		log.Fatalf("error in ServerSetup: %s", err)
 	}
 
-	log.Printf("starting")
+	log.Printf("starting version %s", programVersion)
 	listeners := make([]net.Listener, 0)
 	for _, bindaddr := range ptInfo.Bindaddrs {
 		if port != 0 {
