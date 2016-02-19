@@ -334,7 +334,7 @@ func checkProxyURL(u *url.URL) error {
 		// covert Host header in HTTP proxy CONNECT requests. Using an
 		// HTTP proxy cannot provide effective obfuscation without such
 		// a patched Firefox.
-		// https://trac.torproject.org/projects/tor/ticket/12146
+		// https://bugs.torproject.org/12146
 		// https://gitweb.torproject.org/tor-browser.git/commit/?id=e08b91c78d919f66dd5161561ca1ad7bcec9a563
 		// https://bugzilla.mozilla.org/show_bug.cgi?id=1017769
 		// https://hg.mozilla.org/mozilla-central/rev/a1f6458800d4

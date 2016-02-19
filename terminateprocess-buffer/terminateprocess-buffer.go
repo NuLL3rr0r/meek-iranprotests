@@ -12,7 +12,7 @@
 // notice that its stdin has closed, and exit gracefully.
 //
 // TOR_PT_EXIT_ON_STDIN_CLOSE:
-// https://trac.torproject.org/projects/tor/ticket/15435
+// https://bugs.torproject.org/15435
 package main
 
 import (

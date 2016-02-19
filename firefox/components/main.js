@@ -71,7 +71,7 @@ MeekHTTPHelper.prototype = {
             // browser updates.
             // We do this before we change the network.proxy.socks_remote_dns
             // value since we do not want that change to be permanent. See
-            // https://trac.torproject.org/projects/tor/ticket/16269.
+            // https://bugs.torproject.org/16269.
             let prefSvc = Components.classes["@mozilla.org/preferences-service;1"]
                 .getService(Components.interfaces.nsIPrefService);
             prefSvc.savePrefFile(null);
@@ -79,7 +79,7 @@ MeekHTTPHelper.prototype = {
             let prefs = Components.classes["@mozilla.org/preferences-service;1"]
                 .getService(Components.interfaces.nsIPrefBranch);
             // Allow unproxied DNS, working around a Tor Browser patch:
-            // https://trac.torproject.org/projects/tor/ticket/11183#comment:6.
+            // https://bugs.torproject.org/11183#comment:6.
             // We set TRANSPARENT_PROXY_RESOLVES_HOST whenever we are asked to
             // use a proxy, so name resolution uses the proxy despite this pref.
             prefs.setBoolPref("network.proxy.socks_remote_dns", false);
@@ -197,7 +197,7 @@ MeekHTTPHelper.buildProxyInfo = function(spec) {
         // 3.6.2, leak the covert Host header in HTTP proxy CONNECT requests.
         // Using an HTTP proxy cannot provide effective obfuscation without such
         // a patched Firefox.
-        // https://trac.torproject.org/projects/tor/ticket/12146
+        // https://bugs.torproject.org/12146
         // https://gitweb.torproject.org/tor-browser.git/commit/?id=e08b91c78d919f66dd5161561ca1ad7bcec9a563
         // https://bugzilla.mozilla.org/show_bug.cgi?id=1017769
         // https://hg.mozilla.org/mozilla-central/rev/a1f6458800d4

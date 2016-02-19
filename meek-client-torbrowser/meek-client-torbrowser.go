@@ -153,9 +153,9 @@ func main() {
 	// XRE_PROFILE_PATH, in particular, overrides the -profile option that
 	// runFirefox sets, causing Firefox to run with profile.default instead
 	// of profile.meek-http-helper, which conflicts with the profile.default
-	// that is already running. See
-	// https://trac.torproject.org/projects/tor/ticket/13247, particularly
-	// #comment:17 and #comment:18. The environment variable names come from
+	// that is already running. See https://bugs.torproject.org/13247,
+	// particularly #comment:17 and #comment:18. The environment variable
+	// names come from
 	// https://hg.mozilla.org/mozilla-central/file/cfde3603b020/toolkit/xre/nsAppRunner.cpp#l3941
 	var firefoxRestartEnvVars = []string{
 		"XRE_PROFILE_PATH",
@@ -198,8 +198,7 @@ func main() {
 
 	if os.Getenv("TOR_PT_EXIT_ON_STDIN_CLOSE") == "1" {
 		// This environment variable means we should treat EOF on stdin
-		// just like SIGTERM.
-		// https://trac.torproject.org/projects/tor/ticket/15435
+		// just like SIGTERM: https://bugs.torproject.org/15435.
 		go func() {
 			io.Copy(ioutil.Discard, os.Stdin)
 			log.Printf("synthesizing SIGTERM because of stdin close")
