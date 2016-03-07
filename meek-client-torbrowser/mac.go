@@ -6,9 +6,10 @@
 package main
 
 const (
-	// The TorBrowser.app.meek-http-helper directory is a special case for
-	// the mac bundle. It is a copy of TorBrowser.app that has a modified
-	// Info.plist file so that it doesn't show a dock icon.
-	firefoxPath        = "PluggableTransports/TorBrowser.app.meek-http-helper/Contents/MacOS/firefox"
-	firefoxProfilePath = "../Data/Browser/profile.meek-http-helper"
+	// During startup of meek-client-torbrowser, the browser profile is
+	// created under firefoxProfilePath if it does not exist by making a
+	// recursive copy of everything under profileTemplatePath.
+	firefoxPath         = "../firefox"
+	firefoxProfilePath  = "../../../../TorBrowser-Data/Tor/PluggableTransports/profile.meek-http-helper"
+	profileTemplatePath = "../../Resources/TorBrowser/Tor/PluggableTransports/template-profile.meek-http-helper"
 )

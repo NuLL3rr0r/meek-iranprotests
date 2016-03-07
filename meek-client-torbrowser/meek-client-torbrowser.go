@@ -32,6 +32,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"syscall"
 )
 
@@ -63,15 +64,115 @@ func logSignal(p *os.Process, sig os.Signal) error {
 	return err
 }
 
+func copyFile(srcPath string, mode os.FileMode, destPath string) error {
+	inFile, err := os.Open(srcPath)
+	if err != nil {
+		return err
+	}
+
+	defer inFile.Close()
+	outFile, err := os.OpenFile(destPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, mode)
+	if err != nil {
+		return err
+	}
+
+	// Always close the destination file before returning.
+	defer func() {
+		closeErr := outFile.Close()
+		if err == nil {
+			err = closeErr
+		}
+	}()
+
+	if _, err = io.Copy(outFile, inFile); err != nil {
+		return err
+	}
+	err = outFile.Sync()
+	return err
+}
+
+// Make sure that the browser profile exists. If it does not exist and if
+// profileTemplatePath is not empty, create it by making a recursive copy of
+// all the files and directories under profileTemplatePath. A safe copy is
+// done by first copying the profile files into a temporary directory and
+// then doing an atomic rename of the temporary directory as the last step.
+func ensureProfileExists(profilePath string) error {
+	_, err := os.Stat(profilePath)
+	if err == nil || os.IsExist(err) {
+		return nil	// The profile has already been created.
+	}
+
+	// If profileTemplatePath is not set, we are running on a platform that
+	// expects the profile to already exist.
+	if (profileTemplatePath == "") {
+		return err;
+	}
+
+	log.Printf("creating profile by copying files from %s to %s\n", profileTemplatePath, profilePath)
+	tmpPath, err := ioutil.TempDir(filepath.Dir(profilePath), "tmpMeekProfile")
+	if err != nil {
+		return err
+	}
+	err = os.MkdirAll(tmpPath, os.ModePerm)
+	if err != nil {
+		return err
+	}
+
+	// Remove the temporary directory before returning.
+	defer func() {
+		os.RemoveAll(tmpPath);
+	}()
+
+	templatePath, err := filepath.Abs(profileTemplatePath)
+	if err != nil {
+		return err
+	}
+
+	visit := func(path string, info os.FileInfo, err error) error {
+		relativePath := strings.TrimPrefix(path, templatePath)
+		if (relativePath == "") {
+			return nil	// skip the root directory
+		}
+
+		// If relativePath is a directory, create it; if it is a file, copy it.
+		destPath := filepath.Join(tmpPath, relativePath);
+		if (info.IsDir()) {
+			err = os.MkdirAll(destPath, info.Mode())
+		} else {
+			err = copyFile(path, info.Mode(), destPath)
+		}
+
+		return err
+	}
+
+	err = filepath.Walk(templatePath, visit)
+	if err != nil {
+		return err
+	}
+
+	return os.Rename(tmpPath, profilePath);
+}
+
+
 // Run firefox and return its exec.Cmd and stdout pipe.
 func runFirefox() (cmd *exec.Cmd, stdout io.Reader, err error) {
+	// Mac OS X needs absolute paths for firefox and for the profile.
+	var absFirefoxPath string
+	absFirefoxPath, err = filepath.Abs(firefoxPath)
+	if err != nil {
+		return
+	}
 	var profilePath string
-	// Mac OS X needs an absolute profile path.
 	profilePath, err = filepath.Abs(firefoxProfilePath)
 	if err != nil {
 		return
 	}
-	cmd = exec.Command(firefoxPath, "-no-remote", "-profile", profilePath)
+	err = ensureProfileExists(profilePath)
+	if err != nil {
+		return
+	}
+
+	cmd = exec.Command(absFirefoxPath, "--invisible", "-no-remote", "-profile", profilePath)
 	cmd.Stderr = os.Stderr
 	stdout, err = cmd.StdoutPipe()
 	if err != nil {
