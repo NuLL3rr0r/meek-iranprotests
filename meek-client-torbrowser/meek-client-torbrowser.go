@@ -104,15 +104,22 @@ func ensureProfileExists(profilePath string) error {
 
 	// If profileTemplatePath is not set, we are running on a platform that
 	// expects the profile to already exist.
-	if (profileTemplatePath == "") {
-		return err;
+	if profileTemplatePath == "" {
+		return err
 	}
 
 	log.Printf("creating profile by copying files from %s to %s\n", profileTemplatePath, profilePath)
-	tmpPath, err := ioutil.TempDir(filepath.Dir(profilePath), "tmpMeekProfile")
+	profileParentPath := filepath.Dir(profilePath)
+	err = os.MkdirAll(profileParentPath, os.ModePerm)
 	if err != nil {
 		return err
 	}
+
+	tmpPath, err := ioutil.TempDir(profileParentPath, "tmpMeekProfile")
+	if err != nil {
+		return err
+	}
+
 	err = os.MkdirAll(tmpPath, os.ModePerm)
 	if err != nil {
 		return err
@@ -120,7 +127,7 @@ func ensureProfileExists(profilePath string) error {
 
 	// Remove the temporary directory before returning.
 	defer func() {
-		os.RemoveAll(tmpPath);
+		os.RemoveAll(tmpPath)
 	}()
 
 	templatePath, err := filepath.Abs(profileTemplatePath)
@@ -130,13 +137,13 @@ func ensureProfileExists(profilePath string) error {
 
 	visit := func(path string, info os.FileInfo, err error) error {
 		relativePath := strings.TrimPrefix(path, templatePath)
-		if (relativePath == "") {
+		if relativePath == "" {
 			return nil	// skip the root directory
 		}
 
 		// If relativePath is a directory, create it; if it is a file, copy it.
-		destPath := filepath.Join(tmpPath, relativePath);
-		if (info.IsDir()) {
+		destPath := filepath.Join(tmpPath, relativePath)
+		if info.IsDir() {
 			err = os.MkdirAll(destPath, info.Mode())
 		} else {
 			err = copyFile(path, info.Mode(), destPath)
@@ -150,7 +157,7 @@ func ensureProfileExists(profilePath string) error {
 		return err
 	}
 
-	return os.Rename(tmpPath, profilePath);
+	return os.Rename(tmpPath, profilePath)
 }
 
 
