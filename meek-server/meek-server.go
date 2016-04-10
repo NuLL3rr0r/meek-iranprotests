@@ -264,6 +264,11 @@ func (state *State) ExpireSessions() {
 }
 
 func listenTLS(network string, addr *net.TCPAddr, certFilename, keyFilename string) (net.Listener, error) {
+	ctx, err := newCertContext(certFilename, keyFilename)
+	if err != nil {
+		return nil, err
+	}
+
 	// This is cribbed from the source of net/http.Server.ListenAndServeTLS.
 	// We have to separate the Listen and Serve parts because we need to
 	// report the listening address before entering Serve (which is an
@@ -272,12 +277,9 @@ func listenTLS(network string, addr *net.TCPAddr, certFilename, keyFilename stri
 	config := &tls.Config{}
 	config.NextProtos = []string{"http/1.1"}
 
-	var err error
-	config.Certificates = make([]tls.Certificate, 1)
-	config.Certificates[0], err = tls.LoadX509KeyPair(certFilename, keyFilename)
-	if err != nil {
-		return nil, err
-	}
+	// Install a GetCertificate callback that ensures that the certificate is
+	// up to date.
+	config.GetCertificate = ctx.getCertificate
 
 	conn, err := net.ListenTCP(network, addr)
 	if err != nil {
