@@ -22,6 +22,7 @@ import (
 	"os"
 	"os/signal"
 	"path"
+	"runtime"
 	"sync"
 	"syscall"
 	"time"
@@ -367,7 +368,7 @@ func main() {
 		log.Fatalf("error in ServerSetup: %s", err)
 	}
 
-	log.Printf("starting version %s", programVersion)
+	log.Printf("starting version %s (%s)", programVersion, runtime.Version())
 	listeners := make([]net.Listener, 0)
 	for _, bindaddr := range ptInfo.Bindaddrs {
 		if port != 0 {
