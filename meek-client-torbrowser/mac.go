@@ -7,7 +7,7 @@ package main
 
 const (
 	// During startup of meek-client-torbrowser, the browser profile is
-	// created under firefoxProfilePath if it does not exist by making a
+	// created and maintained under firefoxProfilePath by making a
 	// recursive copy of everything under profileTemplatePath.
 	firefoxPath         = "../firefox"
 	firefoxProfilePath  = "../../../../TorBrowser-Data/Tor/PluggableTransports/profile.meek-http-helper"

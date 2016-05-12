@@ -22,6 +22,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"flag"
 	"fmt"
 	"io"
@@ -91,21 +92,40 @@ func copyFile(srcPath string, mode os.FileMode, destPath string) error {
 	return err
 }
 
-// Make sure that the browser profile exists. If it does not exist and if
-// profileTemplatePath is not empty, create it by making a recursive copy of
+// Make sure that the browser profile exists. If profileTemplatePath is not
+// empty, the profile is created and maintained by making a recursive copy of
 // all the files and directories under profileTemplatePath. A safe copy is
 // done by first copying the profile files into a temporary directory and
 // then doing an atomic rename of the temporary directory as the last step.
-func ensureProfileExists(profilePath string) error {
+// To ensure that the profile is up-to-date with respect to the template
+// (e.g., after Tor Browser has been updated), the contents of the file
+// meek-template-sha256sum.txt within the profile are compared with the
+// corresponding template file; if they differ, the profile is deleted and
+// recreated.
+func prepareBrowserProfile(profilePath string) error {
 	_, err := os.Stat(profilePath)
-	if err == nil || os.IsExist(err) {
-		return nil	// The profile has already been created.
-	}
+	profileExists := err == nil || os.IsExist(err)
 
 	// If profileTemplatePath is not set, we are running on a platform that
 	// expects the profile to already exist.
 	if profileTemplatePath == "" {
+		if profileExists {
+			return nil
+		}
 		return err
+	}
+
+	if profileExists {
+		if isBrowserProfileUpToDate(profileTemplatePath, profilePath) {
+			return nil
+		}
+
+		// Remove outdated meek helper profile.
+		log.Printf("removing outdated profile at %s\n", profilePath)
+		err = os.RemoveAll(profilePath)
+		if err != nil {
+			return err
+		}
 	}
 
 	log.Printf("creating profile by copying files from %s to %s\n", profileTemplatePath, profilePath)
@@ -160,6 +180,22 @@ func ensureProfileExists(profilePath string) error {
 	return os.Rename(tmpPath, profilePath)
 }
 
+// Return true if the profile is up-to-date with the template.
+func isBrowserProfileUpToDate(templatePath string, profilePath string) bool {
+	checksumFileName := "meek-template-sha256sum.txt"
+	templateChecksumPath := filepath.Join(templatePath, checksumFileName)
+	templateData, err := ioutil.ReadFile(templateChecksumPath)
+	if (err != nil) {
+		return false
+	}
+	profileChecksumPath := filepath.Join(profilePath, checksumFileName)
+	profileData, err := ioutil.ReadFile(profileChecksumPath)
+	if (err != nil) {
+		return false
+	}
+
+	return bytes.Equal(templateData, profileData)
+}
 
 // Run firefox and return its exec.Cmd and stdout pipe.
 func runFirefox() (cmd *exec.Cmd, stdout io.Reader, err error) {
@@ -174,7 +210,7 @@ func runFirefox() (cmd *exec.Cmd, stdout io.Reader, err error) {
 	if err != nil {
 		return
 	}
-	err = ensureProfileExists(profilePath)
+	err = prepareBrowserProfile(profilePath)
 	if err != nil {
 		return
 	}
