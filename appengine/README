@@ -15,9 +15,9 @@ meek-client to talk to the locally running app, put this in torrc:
 	ClientTransportPlugin meek exec ./meek-client --log meek-client.log
 
 To deploy to App Engine, create a Google Account and use it to create a
-new app with a unique name. Edit the "application:" line of app.yaml to
-refer to your app's name. Run
-	go_appengine/goapp deploy
+new app with a unique name. Let's say your app is called "example". Then
+to deploy it you run
+	go_appengine/goapp deploy -application example
 To configure meek-client to talk to the App Engine app, give the app's
 name as the url and "www.google.com" as the front domain.
 	UseBridges 1
