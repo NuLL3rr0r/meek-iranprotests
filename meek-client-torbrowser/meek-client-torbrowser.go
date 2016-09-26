@@ -289,6 +289,17 @@ func main() {
 		log.SetOutput(f)
 	}
 
+	// By default, writes to file descriptor 1 and 2 when the descriptor has
+	// been closed will terminate the program with a SIGPIPE signal. This is
+	// a problem because the default log destination is stderr (file
+	// descriptor 2). When the parent process (tor) terminates and closes
+	// its stderr, any attempt to log will cause us to die, before we can do
+	// our own cleanup. Therefore ignore SIGPIPE, causing writes to a closed
+	// stderr to return syscall.EPIPE rather than terminate.
+	// https://golang.org/pkg/os/signal/#hdr-SIGPIPE
+	// https://bugs.torproject.org/20030#comment:6
+	signal.Notify(make(chan os.Signal, 1), syscall.SIGPIPE)
+
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 
