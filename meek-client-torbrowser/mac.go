@@ -5,6 +5,8 @@
 
 package main
 
+import "os/exec"
+
 const (
 	// During startup of meek-client-torbrowser, the browser profile is
 	// created and maintained under firefoxProfilePath by making a
@@ -14,3 +16,7 @@ const (
 	firefoxProfilePath  = "../../../../TorBrowser-Data/Tor/PluggableTransports/profile.meek-http-helper"
 	profileTemplatePath = "../../Resources/TorBrowser/Tor/PluggableTransports/template-profile.meek-http-helper"
 )
+
+func osSpecificCommandSetup(cmd *exec.Cmd) {
+	// nothing
+}

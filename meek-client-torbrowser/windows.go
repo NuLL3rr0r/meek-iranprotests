@@ -5,8 +5,14 @@
 
 package main
 
+import "os/exec"
+
 const (
 	firefoxPath         = "./firefox.exe"
 	firefoxProfilePath  = "TorBrowser/Data/Browser/profile.meek-http-helper"
 	profileTemplatePath = ""
 )
+
+func osSpecificCommandSetup(cmd *exec.Cmd) {
+	// nothing
+}

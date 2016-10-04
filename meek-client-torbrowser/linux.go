@@ -5,8 +5,19 @@
 
 package main
 
+import (
+	"os/exec"
+	"syscall"
+)
+
 const (
 	firefoxPath         = "./firefox"
 	firefoxProfilePath  = "TorBrowser/Data/Browser/profile.meek-http-helper"
 	profileTemplatePath = ""
 )
+
+func osSpecificCommandSetup(cmd *exec.Cmd) {
+	// Extra insurance against stray child processes: send SIGTERM when this
+	// process terminates. Only works on Linux.
+	cmd.SysProcAttr = &syscall.SysProcAttr{Pdeathsig: syscall.SIGTERM}
+}
