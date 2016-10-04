@@ -6,7 +6,7 @@ import (
 )
 
 func TestMakeProxySpec(t *testing.T) {
-	badTests := [...]url.URL{
+	badTests := [...]*url.URL{
 		{Scheme: "http"},
 		{Scheme: "http", Host: ":"},
 		{Scheme: "http", Host: "localhost"},
@@ -27,32 +27,32 @@ func TestMakeProxySpec(t *testing.T) {
 		{Scheme: "unknown", Host: "localhost:9999"},
 	}
 	goodTests := [...]struct {
-		input    url.URL
+		input    *url.URL
 		expected ProxySpec
 	}{
 		{
-			url.URL{Scheme: "http", Host: "localhost:8080"},
+			&url.URL{Scheme: "http", Host: "localhost:8080"},
 			ProxySpec{"http", "localhost", 8080},
 		},
 		{
-			url.URL{Scheme: "socks5", Host: "localhost:1080"},
+			&url.URL{Scheme: "socks5", Host: "localhost:1080"},
 			ProxySpec{"socks5", "localhost", 1080},
 		},
 		{
-			url.URL{Scheme: "socks4a", Host: "localhost:1080"},
+			&url.URL{Scheme: "socks4a", Host: "localhost:1080"},
 			ProxySpec{"socks4a", "localhost", 1080},
 		},
 	}
 
 	for _, input := range badTests {
-		_, err := makeProxySpec(&input)
+		_, err := makeProxySpec(input)
 		if err == nil {
 			t.Errorf("%q unexpectedly succeeded", input)
 		}
 	}
 
 	for _, test := range goodTests {
-		spec, err := makeProxySpec(&test.input)
+		spec, err := makeProxySpec(test.input)
 		if err != nil {
 			t.Fatalf("%q unexpectedly returned an error: %s", test.input, err)
 		}
