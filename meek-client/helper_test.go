@@ -6,7 +6,7 @@ import (
 )
 
 func TestMakeProxySpec(t *testing.T) {
-	badTests := [...]*url.URL{
+	badTests := []*url.URL{
 		{Scheme: "http"},
 		{Scheme: "http", Host: ":"},
 		{Scheme: "http", Host: "localhost"},
@@ -26,7 +26,7 @@ func TestMakeProxySpec(t *testing.T) {
 		{Scheme: "socks4", Host: "localhost:1080"},
 		{Scheme: "unknown", Host: "localhost:9999"},
 	}
-	goodTests := [...]struct {
+	goodTests := []struct {
 		input    *url.URL
 		expected ProxySpec
 	}{
