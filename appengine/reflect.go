@@ -4,8 +4,8 @@ package reflect
 
 import (
 	"io"
-	"net/http"
 	"net"
+	"net/http"
 	"net/url"
 	"time"
 

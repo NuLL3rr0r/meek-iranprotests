@@ -158,7 +158,7 @@ func prepareBrowserProfile(profilePath string) error {
 	visit := func(path string, info os.FileInfo, err error) error {
 		relativePath := strings.TrimPrefix(path, templatePath)
 		if relativePath == "" {
-			return nil	// skip the root directory
+			return nil // skip the root directory
 		}
 
 		// If relativePath is a directory, create it; if it is a file, copy it.
@@ -185,12 +185,12 @@ func isBrowserProfileUpToDate(templatePath string, profilePath string) bool {
 	checksumFileName := "meek-template-sha256sum.txt"
 	templateChecksumPath := filepath.Join(templatePath, checksumFileName)
 	templateData, err := ioutil.ReadFile(templateChecksumPath)
-	if (err != nil) {
+	if err != nil {
 		return false
 	}
 	profileChecksumPath := filepath.Join(profilePath, checksumFileName)
 	profileData, err := ioutil.ReadFile(profileChecksumPath)
-	if (err != nil) {
+	if err != nil {
 		return false
 	}
 
