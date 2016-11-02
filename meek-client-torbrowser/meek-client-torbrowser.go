@@ -206,9 +206,14 @@ func runFirefox() (cmd *exec.Cmd, stdout io.Reader, err error) {
 		return
 	}
 	var profilePath string
-	profilePath, err = filepath.Abs(firefoxProfilePath)
-	if err != nil {
-		return
+	var torDataDir = os.Getenv("TOR_BROWSER_TOR_DATA_DIR")
+	if torDataDir != "" && torDataDirFirefoxProfilePath != "" {
+		profilePath = filepath.Join(torDataDir, torDataDirFirefoxProfilePath)
+	} else {
+		profilePath, err = filepath.Abs(firefoxProfilePath)
+		if err != nil {
+			return
+		}
 	}
 	err = prepareBrowserProfile(profilePath)
 	if err != nil {
