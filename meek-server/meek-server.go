@@ -279,7 +279,7 @@ func listenTLS(network string, addr *net.TCPAddr, certFilename, keyFilename stri
 
 	// Install a GetCertificate callback that ensures that the certificate is
 	// up to date.
-	config.GetCertificate = ctx.getCertificate
+	config.GetCertificate = ctx.GetCertificate
 
 	conn, err := net.ListenTCP(network, addr)
 	if err != nil {
