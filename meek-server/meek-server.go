@@ -265,12 +265,7 @@ func (state *State) ExpireSessions() {
 	}
 }
 
-func listenTLS(network string, addr *net.TCPAddr, certFilename, keyFilename string) (net.Listener, error) {
-	ctx, err := newCertContext(certFilename, keyFilename)
-	if err != nil {
-		return nil, err
-	}
-
+func listenTLS(network string, addr *net.TCPAddr, getCertificate func (*tls.ClientHelloInfo) (*tls.Certificate, error)) (net.Listener, error) {
 	// This is cribbed from the source of net/http.Server.ListenAndServeTLS.
 	// We have to separate the Listen and Serve parts because we need to
 	// report the listening address before entering Serve (which is an
@@ -278,10 +273,7 @@ func listenTLS(network string, addr *net.TCPAddr, certFilename, keyFilename stri
 	// https://groups.google.com/d/msg/Golang-nuts/3F1VRCCENp8/3hcayZiwYM8J
 	config := &tls.Config{}
 	config.NextProtos = []string{"http/1.1"}
-
-	// Install a GetCertificate callback that ensures that the certificate is
-	// up to date.
-	config.GetCertificate = ctx.GetCertificate
+	config.GetCertificate = getCertificate
 
 	conn, err := net.ListenTCP(network, addr)
 	if err != nil {
@@ -307,8 +299,8 @@ func startListener(network string, addr *net.TCPAddr) (net.Listener, error) {
 	return startServer(ln)
 }
 
-func startListenerTLS(network string, addr *net.TCPAddr, certFilename, keyFilename string) (net.Listener, error) {
-	ln, err := listenTLS(network, addr, certFilename, keyFilename)
+func startListenerTLS(network string, addr *net.TCPAddr, getCertificate func (*tls.ClientHelloInfo) (*tls.Certificate, error)) (net.Listener, error) {
+	ln, err := listenTLS(network, addr, getCertificate)
 	if err != nil {
 		return nil, err
 	}
@@ -356,14 +348,25 @@ func main() {
 		log.SetOutput(f)
 	}
 
+	// Handle the various ways of setting up TLS. The legal configurations
+	// are:
+	//   --cert and --key together
+	//   --disable-tls
+	// The outputs of this block of code are the disableTLS and
+	// getCertificate variables.
+	var getCertificate func (*tls.ClientHelloInfo) (*tls.Certificate, error)
 	if disableTLS {
 		if certFilename != "" || keyFilename != "" {
 			log.Fatalf("The --cert and --key options are not allowed with --disable-tls.\n")
 		}
-	} else {
-		if certFilename == "" || keyFilename == "" {
-			log.Fatalf("The --cert and --key options are required.\n")
+	} else if certFilename != "" && keyFilename != "" {
+		ctx, err := newCertContext(certFilename, keyFilename)
+		if err != nil {
+			log.Fatal(err)
 		}
+		getCertificate = ctx.GetCertificate
+	} else {
+		log.Fatalf("The --cert and --key options are required.\n")
 	}
 
 	var err error
@@ -384,7 +387,7 @@ func main() {
 			if disableTLS {
 				ln, err = startListener("tcp", bindaddr.Addr)
 			} else {
-				ln, err = startListenerTLS("tcp", bindaddr.Addr, certFilename, keyFilename)
+				ln, err = startListenerTLS("tcp", bindaddr.Addr, getCertificate)
 			}
 			if err != nil {
 				pt.SmethodError(bindaddr.MethodName, err.Error())
