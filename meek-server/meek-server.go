@@ -359,20 +359,23 @@ func main() {
 	flag.IntVar(&port, "port", 0, "port to listen on")
 	flag.Parse()
 
-	log.SetFlags(log.LstdFlags | log.LUTC)
-	if logFilename != "" {
-		f, err := os.OpenFile(logFilename, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
-		if err != nil {
-			log.Fatalf("error opening log file: %s", err)
-		}
-		defer f.Close()
-		log.SetOutput(f)
-	}
-
 	var err error
 	ptInfo, err = pt.ServerSetup(nil)
 	if err != nil {
 		log.Fatalf("error in ServerSetup: %s", err)
+	}
+
+	log.SetFlags(log.LstdFlags | log.LUTC)
+	if logFilename != "" {
+		f, err := os.OpenFile(logFilename, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
+		if err != nil {
+			// If we fail to open the log, emit a message that will
+			// appear in tor's log.
+			pt.SmethodError(ptMethodName, fmt.Sprintf("error opening log file: %s", err))
+			log.Fatalf("error opening log file: %s", err)
+		}
+		defer f.Close()
+		log.SetOutput(f)
 	}
 
 	// Handle the various ways of setting up TLS. The legal configurations

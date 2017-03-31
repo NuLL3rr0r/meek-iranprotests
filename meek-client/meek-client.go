@@ -363,10 +363,18 @@ func main() {
 	flag.StringVar(&options.URL, "url", "", "URL to request if no url= SOCKS arg")
 	flag.Parse()
 
+	ptInfo, err = pt.ClientSetup(nil)
+	if err != nil {
+		log.Fatalf("error in ClientSetup: %s", err)
+	}
+
 	log.SetFlags(log.LstdFlags | log.LUTC)
 	if logFilename != "" {
 		f, err := os.OpenFile(logFilename, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 		if err != nil {
+			// If we fail to open the log, emit a message that will
+			// appear in tor's log.
+			pt.CmethodError(ptMethodName, fmt.Sprintf("error opening log file: %s", err))
 			log.Fatalf("error opening log file: %s", err)
 		}
 		defer f.Close()
@@ -394,11 +402,6 @@ func main() {
 	// options.ProxyURL is set.
 	httpTransport = *http.DefaultTransport.(*http.Transport)
 	httpTransport.Proxy = nil
-
-	ptInfo, err = pt.ClientSetup(nil)
-	if err != nil {
-		log.Fatalf("error in ClientSetup: %s", err)
-	}
 
 	// Command-line proxy overrides managed configuration.
 	if options.ProxyURL == nil {
