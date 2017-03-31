@@ -11,26 +11,51 @@ meek-server - The meek server transport plugin
 
 SYNOPSIS
 --------
-**meek-server** **--cert**=__FILENAME__ **--key**=__FILENAME__ [__OPTIONS__]
+**meek-server** **--acme-hostnames**=__HOSTNAME__ [__OPTIONS__]
 
 DESCRIPTION
 -----------
 meek-server is a transport plugin for Tor that encodes a stream as a
 sequence of HTTP requests and responses.
 
-The server runs in HTTPS mode by default, and the **--cert** and
-**--key** options are required.
+You will need to configure TLS certificates. There are two ways to set
+up certificates:
+
+* **--acme-hostnames**=__HOSTNAME__ will automatically get certificates
+  for __HOSTNAME__ using Let's Encrypt. This only works when meek-server
+  is running on port 443.
+* **--cert**=__FILENAME__ and **--key**=__FILENAME__ allow use to use
+  your own externally acquired certificate.
 
 Configuration for meek-server usually appears in a torrc file. Here is a
-sample configuration using HTTPS:
+sample configuration using automatic Let's Encrypt certificates:
+----
+ExtORPort auto
+ServerTransportListenAddr 0.0.0.0:443
+ServerTransportPlugin meek exec ./meek-server --acme-hostnames meek-server.example --log meek-server.log
+----
+Here is a sample configuration using externally acquired certificates:
 ----
 ExtORPort auto
 ServerTransportListenAddr meek 0.0.0.0:8443
 ServerTransportPlugin meek exec ./meek-server 8443 --cert cert.pem --key key.pem --log meek-server.log
 ----
 
+To listen on port 443 without needed to run as root, on Linux,
+you can use the `setcap` program, part of libcap2:
+----
+setcap 'cap_net_bind_service=+ep' /usr/local/bin/meek-server
+----
+
 OPTIONS
 -------
+**--acme-hostnames**=__HOSTNAME__[,__HOSTNAME__]...::
+    Comma-separated list of hostnames to honor when getting automatic
+    certificates from Let's Encrypt. meek-server has to be running on
+    port 443 in order for the **--acme-hostnames** option to work. The
+    certificates will be cached in the pt_state/meek-certificate-cache
+    directory inside tor state directory.
+
 **--cert**=__FILENAME__::
     Name of a PEM-encoded TLS certificate file. Required unless
     **--disable-tls** is used.

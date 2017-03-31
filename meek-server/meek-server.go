@@ -3,14 +3,19 @@
 // data to a local OR port.
 //
 // Sample usage in torrc:
+// 	ServerTransportListenAddr meek 0.0.0.0:443
+// 	ServerTransportPlugin meek exec ./meek-server --acme-hostnames meek-server.example --log meek-server.log
+// Using your own TLS certificate:
 // 	ServerTransportListenAddr meek 0.0.0.0:8443
 // 	ServerTransportPlugin meek exec ./meek-server --cert cert.pem --key key.pem --log meek-server.log
 // Plain HTTP usage:
 // 	ServerTransportListenAddr meek 0.0.0.0:8080
 // 	ServerTransportPlugin meek exec ./meek-server --disable-tls --log meek-server.log
 //
-// The server runs in HTTPS mode by default, and the --cert and --key options
-// are required. Use the --disable-tls option to run with plain HTTP.
+// The server runs in HTTPS mode by default, getting certificates from Let's
+// Encrypt automatically. The server must be listening on port 443 for the
+// automatic certificates to work. If you have your own certificate, use the
+// --cert and --key options. Use --disable-tls option to run with plain HTTP.
 package main
 
 import (
@@ -24,12 +29,15 @@ import (
 	"os"
 	"os/signal"
 	"path"
+	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
 
 	"git.torproject.org/pluggable-transports/goptlib.git"
+	"golang.org/x/crypto/acme/autocert"
 )
 
 const (
@@ -326,15 +334,25 @@ func startServer(ln net.Listener) (net.Listener, error) {
 	return ln, nil
 }
 
+func getCertificateCacheDir() (string, error) {
+	stateDir, err := pt.MakeStateDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(stateDir, "meek-certificate-cache"), nil
+}
+
 func main() {
+	var acmeHostnamesCommas string
 	var disableTLS bool
 	var certFilename, keyFilename string
 	var logFilename string
 	var port int
 
+	flag.StringVar(&acmeHostnamesCommas, "acme-hostnames", "", "comma-separated hostnames for automatic TLS certificate")
 	flag.BoolVar(&disableTLS, "disable-tls", false, "don't use HTTPS")
-	flag.StringVar(&certFilename, "cert", "", "TLS certificate file (required without --disable-tls)")
-	flag.StringVar(&keyFilename, "key", "", "TLS private key file (required without --disable-tls)")
+	flag.StringVar(&certFilename, "cert", "", "TLS certificate file")
+	flag.StringVar(&keyFilename, "key", "", "TLS private key file")
 	flag.StringVar(&logFilename, "log", "", "name of log file")
 	flag.IntVar(&port, "port", 0, "port to listen on")
 	flag.Parse()
@@ -348,31 +366,69 @@ func main() {
 		log.SetOutput(f)
 	}
 
+	var err error
+	ptInfo, err = pt.ServerSetup(nil)
+	if err != nil {
+		log.Fatalf("error in ServerSetup: %s", err)
+	}
+
 	// Handle the various ways of setting up TLS. The legal configurations
 	// are:
+	//   --acme-hostnames
 	//   --cert and --key together
 	//   --disable-tls
-	// The outputs of this block of code are the disableTLS and
-	// getCertificate variables.
+	// The outputs of this block of code are the disableTLS,
+	// missing443Listener, and getCertificate variables.
+	var missing443Listener = false
 	var getCertificate func (*tls.ClientHelloInfo) (*tls.Certificate, error)
 	if disableTLS {
-		if certFilename != "" || keyFilename != "" {
-			log.Fatalf("The --cert and --key options are not allowed with --disable-tls.\n")
+		if acmeHostnamesCommas != "" || certFilename != "" || keyFilename != "" {
+			log.Fatalf("The --acme-hostnames, --cert, and --key options are not allowed with --disable-tls.")
 		}
 	} else if certFilename != "" && keyFilename != "" {
+		if acmeHostnamesCommas != "" {
+			log.Fatalf("The --cert and --key options are not allowed with --acme-hostnames.")
+		}
 		ctx, err := newCertContext(certFilename, keyFilename)
 		if err != nil {
 			log.Fatal(err)
 		}
 		getCertificate = ctx.GetCertificate
-	} else {
-		log.Fatalf("The --cert and --key options are required.\n")
-	}
+	} else if acmeHostnamesCommas != "" {
+		acmeHostnames := strings.Split(acmeHostnamesCommas, ",")
+		log.Printf("ACME hostnames: %q", acmeHostnames)
 
-	var err error
-	ptInfo, err = pt.ServerSetup(nil)
-	if err != nil {
-		log.Fatalf("error in ServerSetup: %s", err)
+		missing443Listener = true
+		// The ACME responder only works when it is running on port 443.
+		// https://letsencrypt.github.io/acme-spec/#domain-validation-with-server-name-indication-dvsni
+		for _, bindaddr := range ptInfo.Bindaddrs {
+			if bindaddr.Addr.Port == 443 {
+				missing443Listener = false
+				break
+			}
+		}
+		// Don't quit immediately if we need a 443 listener and don't
+		// have it; do it later in the SMETHOD loop so it appears in the
+		// tor log.
+
+		var cache autocert.Cache
+		cacheDir, err := getCertificateCacheDir()
+		if err == nil {
+			log.Printf("caching ACME certificates in directory %q", cacheDir)
+			cache = autocert.DirCache(cacheDir)
+		} else {
+			log.Printf("disabling ACME certificate cache: %s", err)
+		}
+
+		certManager := &autocert.Manager{
+			Prompt:     autocert.AcceptTOS,
+			HostPolicy: autocert.HostWhitelist(acmeHostnames...),
+			// Email:      acmeEmail,
+			Cache:      cache,
+		}
+		getCertificate = certManager.GetCertificate
+	} else {
+		log.Fatalf("You must use either --acme-hostnames, or --cert and --key.")
 	}
 
 	log.Printf("starting version %s (%s)", programVersion, runtime.Version())
@@ -383,6 +439,10 @@ func main() {
 		}
 		switch bindaddr.MethodName {
 		case ptMethodName:
+			if missing443Listener {
+				pt.SmethodError(bindaddr.MethodName, "The --acme-hostnames option requires one of the bindaddrs to be on port 443.")
+				break
+			}
 			var ln net.Listener
 			if disableTLS {
 				ln, err = startListener("tcp", bindaddr.Addr)
