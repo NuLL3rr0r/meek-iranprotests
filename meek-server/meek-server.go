@@ -4,7 +4,7 @@
 //
 // Sample usage in torrc:
 // 	ServerTransportListenAddr meek 0.0.0.0:443
-// 	ServerTransportPlugin meek exec ./meek-server --acme-hostnames meek-server.example --log meek-server.log
+// 	ServerTransportPlugin meek exec ./meek-server --acme-hostnames meek-server.example --acme-email admin@meek-server.example --log meek-server.log
 // Using your own TLS certificate:
 // 	ServerTransportListenAddr meek 0.0.0.0:8443
 // 	ServerTransportPlugin meek exec ./meek-server --cert cert.pem --key key.pem --log meek-server.log
@@ -343,12 +343,14 @@ func getCertificateCacheDir() (string, error) {
 }
 
 func main() {
+	var acmeEmail string
 	var acmeHostnamesCommas string
 	var disableTLS bool
 	var certFilename, keyFilename string
 	var logFilename string
 	var port int
 
+	flag.StringVar(&acmeEmail, "acme-email", "", "optional contact email for Let's Encrypt notifications")
 	flag.StringVar(&acmeHostnamesCommas, "acme-hostnames", "", "comma-separated hostnames for automatic TLS certificate")
 	flag.BoolVar(&disableTLS, "disable-tls", false, "don't use HTTPS")
 	flag.StringVar(&certFilename, "cert", "", "TLS certificate file")
@@ -374,7 +376,7 @@ func main() {
 
 	// Handle the various ways of setting up TLS. The legal configurations
 	// are:
-	//   --acme-hostnames
+	//   --acme-hostnames (with optional --acme-email)
 	//   --cert and --key together
 	//   --disable-tls
 	// The outputs of this block of code are the disableTLS,
@@ -382,12 +384,12 @@ func main() {
 	var missing443Listener = false
 	var getCertificate func (*tls.ClientHelloInfo) (*tls.Certificate, error)
 	if disableTLS {
-		if acmeHostnamesCommas != "" || certFilename != "" || keyFilename != "" {
-			log.Fatalf("The --acme-hostnames, --cert, and --key options are not allowed with --disable-tls.")
+		if acmeEmail != "" || acmeHostnamesCommas != "" || certFilename != "" || keyFilename != "" {
+			log.Fatalf("The --acme-email, --acme-hostnames, --cert, and --key options are not allowed with --disable-tls.")
 		}
 	} else if certFilename != "" && keyFilename != "" {
-		if acmeHostnamesCommas != "" {
-			log.Fatalf("The --cert and --key options are not allowed with --acme-hostnames.")
+		if acmeEmail != "" || acmeHostnamesCommas != "" {
+			log.Fatalf("The --cert and --key options are not allowed with --acme-email or --acme-hostnames.")
 		}
 		ctx, err := newCertContext(certFilename, keyFilename)
 		if err != nil {
@@ -423,7 +425,7 @@ func main() {
 		certManager := &autocert.Manager{
 			Prompt:     autocert.AcceptTOS,
 			HostPolicy: autocert.HostWhitelist(acmeHostnames...),
-			// Email:      acmeEmail,
+			Email:      acmeEmail,
 			Cache:      cache,
 		}
 		getCertificate = certManager.GetCertificate
