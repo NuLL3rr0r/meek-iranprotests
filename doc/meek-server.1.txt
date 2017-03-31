@@ -19,8 +19,7 @@ meek-server is a transport plugin for Tor that encodes a stream as a
 sequence of HTTP requests and responses.
 
 The server runs in HTTPS mode by default, and the **--cert** and
-**--key** options are required. Use the **--disable-tls** option to run
-with plain HTTP.
+**--key** options are required.
 
 Configuration for meek-server usually appears in a torrc file. Here is a
 sample configuration using HTTPS:
@@ -28,12 +27,6 @@ sample configuration using HTTPS:
 ExtORPort auto
 ServerTransportListenAddr meek 0.0.0.0:8443
 ServerTransportPlugin meek exec ./meek-server 8443 --cert cert.pem --key key.pem --log meek-server.log
-----
-Here is a sample configuration using plain HTTP:
-----
-ExtORPort auto
-ServerTransportListenAddr meek 0.0.0.0:8080
-ServerTransportPlugin meek exec ./meek-server --disable-tls --log meek-server.log
 ----
 
 OPTIONS
@@ -43,7 +36,8 @@ OPTIONS
     **--disable-tls** is used.
 
 **--disable-tls**:
-    Use plain HTTP rather than HTTPS.
+    Use plain HTTP rather than HTTPS. This option is only for testing
+    purposes. Don't use it in production.
 
 **--key**=__FILENAME__:
     Name of a PEM-encoded TLS private key file. Required unless
