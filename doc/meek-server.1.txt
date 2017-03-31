@@ -26,12 +26,14 @@ Configuration for meek-server usually appears in a torrc file. Here is a
 sample configuration using HTTPS:
 ----
 ExtORPort auto
-ServerTransportPlugin meek exec ./meek-server --port 8443 --cert cert.pem --key key.pem --log meek-server.log
+ServerTransportListenAddr meek 0.0.0.0:8443
+ServerTransportPlugin meek exec ./meek-server 8443 --cert cert.pem --key key.pem --log meek-server.log
 ----
 Here is a sample configuration using plain HTTP:
 ----
 ExtORPort auto
-ServerTransportPlugin meek exec ./meek-server --port 8080 --disable-tls --log meek-server.log
+ServerTransportListenAddr meek 0.0.0.0:8080
+ServerTransportPlugin meek exec ./meek-server --disable-tls --log meek-server.log
 ----
 
 OPTIONS
@@ -52,7 +54,9 @@ OPTIONS
 
 **--port**=__PORT__::
     Port to listen on. Overrides the TOR_PT_SERVER_BINDADDR environment
-    variable set by tor.
+    variable set by tor. In most cases you should set the
+    **ServerTransportListenAddr** option in torrc, rather than use the
+    **--port** option.
 
 **-h**, **--help**::
     Display a help message and exit.
