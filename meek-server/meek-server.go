@@ -359,6 +359,7 @@ func main() {
 	flag.IntVar(&port, "port", 0, "port to listen on")
 	flag.Parse()
 
+	log.SetFlags(log.LstdFlags | log.LUTC)
 	if logFilename != "" {
 		f, err := os.OpenFile(logFilename, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 		if err != nil {

@@ -363,6 +363,7 @@ func main() {
 	flag.StringVar(&options.URL, "url", "", "URL to request if no url= SOCKS arg")
 	flag.Parse()
 
+	log.SetFlags(log.LstdFlags | log.LUTC)
 	if logFilename != "" {
 		f, err := os.OpenFile(logFilename, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 		if err != nil {
