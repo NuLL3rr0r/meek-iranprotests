@@ -38,6 +38,7 @@ import (
 
 	"git.torproject.org/pluggable-transports/goptlib.git"
 	"golang.org/x/crypto/acme/autocert"
+	"golang.org/x/net/http2"
 )
 
 const (
@@ -273,65 +274,65 @@ func (state *State) ExpireSessions() {
 	}
 }
 
-func listenTLS(network string, addr *net.TCPAddr, getCertificate func(*tls.ClientHelloInfo) (*tls.Certificate, error)) (net.Listener, error) {
-	// This is cribbed from the source of net/http.Server.ListenAndServeTLS.
-	// We have to separate the Listen and Serve parts because we need to
-	// report the listening address before entering Serve (which is an
-	// infinite loop).
+func initServer(addr *net.TCPAddr,
+	getCertificate func(*tls.ClientHelloInfo) (*tls.Certificate, error),
+	listenAndServe func(*http.Server)) (*http.Server, error) {
+	// We're not capable of listening on port 0 (i.e., an ephemeral port
+	// unknown in advance). The reason is that while the net/http package
+	// exposes ListenAndServe and ListenAndServeTLS, those functions never
+	// return, so there's no opportunity to find out what the port number
+	// is, in between the Listen and Serve steps.
 	// https://groups.google.com/d/msg/Golang-nuts/3F1VRCCENp8/3hcayZiwYM8J
-	config := &tls.Config{}
-	config.NextProtos = []string{"http/1.1"}
-	config.GetCertificate = getCertificate
-
-	conn, err := net.ListenTCP(network, addr)
-	if err != nil {
-		return nil, err
+	if addr.Port == 0 {
+		return nil, fmt.Errorf("cannot listen on port %d; configure a port using ServerTransportListenAddr", addr.Port)
 	}
 
-	// Additionally disable SSLv3 because of the POODLE attack.
-	// http://googleonlinesecurity.blogspot.com/2014/10/this-poodle-bites-exploiting-ssl-30.html
-	// https://code.google.com/p/go/source/detail?r=ad9e191a51946e43f1abac8b6a2fefbf2291eea7
-	config.MinVersion = tls.VersionTLS10
-
-	tlsListener := tls.NewListener(conn, config)
-
-	return tlsListener, nil
-}
-
-func startListener(network string, addr *net.TCPAddr) (net.Listener, error) {
-	ln, err := net.ListenTCP(network, addr)
-	if err != nil {
-		return nil, err
-	}
-	log.Printf("listening with plain HTTP on %s", ln.Addr())
-	return startServer(ln)
-}
-
-func startListenerTLS(network string, addr *net.TCPAddr, getCertificate func(*tls.ClientHelloInfo) (*tls.Certificate, error)) (net.Listener, error) {
-	ln, err := listenTLS(network, addr, getCertificate)
-	if err != nil {
-		return nil, err
-	}
-	log.Printf("listening with HTTPS on %s", ln.Addr())
-	return startServer(ln)
-}
-
-func startServer(ln net.Listener) (net.Listener, error) {
 	state := NewState()
 	go state.ExpireSessions()
+
 	server := &http.Server{
+		Addr:         addr.String(),
 		Handler:      state,
 		ReadTimeout:  readWriteTimeout,
 		WriteTimeout: readWriteTimeout,
 	}
-	go func() {
-		defer ln.Close()
-		err := server.Serve(ln)
+	// We need to override server.TLSConfig.GetCertificate--but first
+	// server.TLSConfig needs to be non-nil. If we just create our own new
+	// &tls.Config, it will lack the default settings that the net/http
+	// package sets up for things like HTTP/2. Therefore we first call
+	// http2.ConfigureServer for its side effect of initializing
+	// server.TLSConfig properly. An alternative would be to make a dummy
+	// net.Listener, call Serve on it, and let it return.
+	// https://github.com/golang/go/issues/16588#issuecomment-237386446
+	err := http2.ConfigureServer(server, nil)
+	if err != nil {
+		return server, err
+	}
+	server.TLSConfig.GetCertificate = getCertificate
+
+	go listenAndServe(server)
+
+	return server, nil
+}
+
+func startServer(addr *net.TCPAddr) (*http.Server, error) {
+	return initServer(addr, nil, func(server *http.Server) {
+		log.Printf("listening with plain HTTP on %s", addr)
+		err := server.ListenAndServe()
 		if err != nil {
-			log.Printf("Error in Serve: %s", err)
+			log.Printf("Error in ListenAndServe: %s", err)
 		}
-	}()
-	return ln, nil
+	})
+}
+
+func startServerTLS(addr *net.TCPAddr, getCertificate func(*tls.ClientHelloInfo) (*tls.Certificate, error)) (*http.Server, error) {
+	return initServer(addr, getCertificate, func(server *http.Server) {
+		log.Printf("listening with HTTPS on %s", addr)
+		err := server.ListenAndServeTLS("", "")
+		if err != nil {
+			log.Printf("Error in ListenAndServeTLS: %s", err)
+		}
+	})
 }
 
 func getCertificateCacheDir() (string, error) {
@@ -438,7 +439,7 @@ func main() {
 	}
 
 	log.Printf("starting version %s (%s)", programVersion, runtime.Version())
-	listeners := make([]net.Listener, 0)
+	servers := make([]*http.Server, 0)
 	for _, bindaddr := range ptInfo.Bindaddrs {
 		if port != 0 {
 			bindaddr.Addr.Port = port
@@ -449,18 +450,18 @@ func main() {
 				pt.SmethodError(bindaddr.MethodName, "The --acme-hostnames option requires one of the bindaddrs to be on port 443.")
 				break
 			}
-			var ln net.Listener
+			var server *http.Server
 			if disableTLS {
-				ln, err = startListener("tcp", bindaddr.Addr)
+				server, err = startServer(bindaddr.Addr)
 			} else {
-				ln, err = startListenerTLS("tcp", bindaddr.Addr, getCertificate)
+				server, err = startServerTLS(bindaddr.Addr, getCertificate)
 			}
 			if err != nil {
 				pt.SmethodError(bindaddr.MethodName, err.Error())
 				break
 			}
-			pt.Smethod(bindaddr.MethodName, ln.Addr())
-			listeners = append(listeners, ln)
+			pt.Smethod(bindaddr.MethodName, bindaddr.Addr)
+			servers = append(servers, server)
 		default:
 			pt.SmethodError(bindaddr.MethodName, "no such method")
 		}
@@ -482,9 +483,12 @@ func main() {
 			log.Printf("got signal %s", sig)
 		}
 	}
-	for _, ln := range listeners {
-		ln.Close()
-	}
+	/*
+		// Not supported until go1.8.
+		for _, server := range servers {
+			server.Close()
+		}
+	*/
 
 	if sig == syscall.SIGTERM {
 		log.Printf("done")
