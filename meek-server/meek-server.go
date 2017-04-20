@@ -61,6 +61,9 @@ const (
 	// Cull unused session ids (with their corresponding OR port connection)
 	// if we haven't seen any activity for this long.
 	maxSessionStaleness = 120 * time.Second
+	// How long to wait for ListenAndServe or ListenAndServeTLS to return an
+	// error before deciding that it's not going to return.
+	listenAndServeErrorTimeout = 100 * time.Millisecond
 )
 
 var ptInfo pt.ServerInfo
@@ -276,7 +279,7 @@ func (state *State) ExpireSessions() {
 
 func initServer(addr *net.TCPAddr,
 	getCertificate func(*tls.ClientHelloInfo) (*tls.Certificate, error),
-	listenAndServe func(*http.Server)) (*http.Server, error) {
+	listenAndServe func(*http.Server, chan<- error)) (*http.Server, error) {
 	// We're not capable of listening on port 0 (i.e., an ephemeral port
 	// unknown in advance). The reason is that while the net/http package
 	// exposes ListenAndServe and ListenAndServeTLS, those functions never
@@ -310,28 +313,44 @@ func initServer(addr *net.TCPAddr,
 	}
 	server.TLSConfig.GetCertificate = getCertificate
 
-	go listenAndServe(server)
+	// Another unfortunate effect of the inseparable net/http ListenAndServe
+	// is that we can't check for Listen errors like "permission denied" and
+	// "address already in use" without potentially entering the infinite
+	// loop of Serve. The hack we apply here is to wait a short time,
+	// listenAndServeErrorTimeout, to see if an error is returned (because
+	// it's better if the error message goes to the tor log through
+	// SMETHOD-ERROR than if it only goes to the meek-server log).
+	errChan := make(chan error)
+	go listenAndServe(server, errChan)
+	select {
+	case err = <-errChan:
+		break
+	case <-time.After(listenAndServeErrorTimeout):
+		break
+	}
 
-	return server, nil
+	return server, err
 }
 
 func startServer(addr *net.TCPAddr) (*http.Server, error) {
-	return initServer(addr, nil, func(server *http.Server) {
+	return initServer(addr, nil, func(server *http.Server, errChan chan<- error) {
 		log.Printf("listening with plain HTTP on %s", addr)
 		err := server.ListenAndServe()
 		if err != nil {
 			log.Printf("Error in ListenAndServe: %s", err)
 		}
+		errChan <- err
 	})
 }
 
 func startServerTLS(addr *net.TCPAddr, getCertificate func(*tls.ClientHelloInfo) (*tls.Certificate, error)) (*http.Server, error) {
-	return initServer(addr, getCertificate, func(server *http.Server) {
+	return initServer(addr, getCertificate, func(server *http.Server, errChan chan<- error) {
 		log.Printf("listening with HTTPS on %s", addr)
 		err := server.ListenAndServeTLS("", "")
 		if err != nil {
 			log.Printf("Error in ListenAndServeTLS: %s", err)
 		}
+		errChan <- err
 	})
 }
 
