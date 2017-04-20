@@ -273,7 +273,7 @@ func (state *State) ExpireSessions() {
 	}
 }
 
-func listenTLS(network string, addr *net.TCPAddr, getCertificate func (*tls.ClientHelloInfo) (*tls.Certificate, error)) (net.Listener, error) {
+func listenTLS(network string, addr *net.TCPAddr, getCertificate func(*tls.ClientHelloInfo) (*tls.Certificate, error)) (net.Listener, error) {
 	// This is cribbed from the source of net/http.Server.ListenAndServeTLS.
 	// We have to separate the Listen and Serve parts because we need to
 	// report the listening address before entering Serve (which is an
@@ -307,7 +307,7 @@ func startListener(network string, addr *net.TCPAddr) (net.Listener, error) {
 	return startServer(ln)
 }
 
-func startListenerTLS(network string, addr *net.TCPAddr, getCertificate func (*tls.ClientHelloInfo) (*tls.Certificate, error)) (net.Listener, error) {
+func startListenerTLS(network string, addr *net.TCPAddr, getCertificate func(*tls.ClientHelloInfo) (*tls.Certificate, error)) (net.Listener, error) {
 	ln, err := listenTLS(network, addr, getCertificate)
 	if err != nil {
 		return nil, err
@@ -386,7 +386,7 @@ func main() {
 	// The outputs of this block of code are the disableTLS,
 	// missing443Listener, and getCertificate variables.
 	var missing443Listener = false
-	var getCertificate func (*tls.ClientHelloInfo) (*tls.Certificate, error)
+	var getCertificate func(*tls.ClientHelloInfo) (*tls.Certificate, error)
 	if disableTLS {
 		if acmeEmail != "" || acmeHostnamesCommas != "" || certFilename != "" || keyFilename != "" {
 			log.Fatalf("The --acme-email, --acme-hostnames, --cert, and --key options are not allowed with --disable-tls.")
