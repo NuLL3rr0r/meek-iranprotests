@@ -82,9 +82,10 @@ const (
 
 var ptInfo pt.ClientInfo
 
-// This is the RoundTripper used to make all our requests (when --helper is not
-// used).
-var httpTransport http.Transport
+// We use this RoundTripper to make all our requests (when --helper is not
+// used). We use the defaults, except we take control of the Proxy setting
+// (notably, disabling the default ProxyFromEnvironment).
+var httpTransport *http.Transport = http.DefaultTransport.(*http.Transport)
 
 // Store for command line options.
 var options struct {
@@ -396,11 +397,8 @@ func main() {
 		}
 	}
 
-	// We make a copy of DefaultTransport because we want the default Dial
-	// and TLSHandshakeTimeout settings. But we want to disable the default
-	// ProxyFromEnvironment setting. Proxy is overridden below if
-	// options.ProxyURL is set.
-	httpTransport = *http.DefaultTransport.(*http.Transport)
+	// Disable the default ProxyFromEnvironment setting. httpTransport.Proxy
+	// is overridden below if options.ProxyURL is set.
 	httpTransport.Proxy = nil
 
 	// Command-line proxy overrides managed configuration.
