@@ -308,7 +308,7 @@ func main() {
 	signal.Notify(make(chan os.Signal, 1), syscall.SIGPIPE)
 
 	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(sigChan, syscall.SIGTERM)
 
 	// Unset environment variables that Firefox sets after a restart (as
 	// caused by, for example, an update or the installation of an add-on).
