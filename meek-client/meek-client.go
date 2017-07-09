@@ -116,7 +116,11 @@ type RequestInfo struct {
 // Do an HTTP roundtrip using the payload data in buf and the request metadata
 // in info.
 func roundTripWithHTTP(buf []byte, info *RequestInfo) (*http.Response, error) {
-	req, err := http.NewRequest("POST", info.URL.String(), bytes.NewReader(buf))
+	var body io.Reader
+	if len(buf) > 0 {
+		body = bytes.NewReader(buf)
+	}
+	req, err := http.NewRequest("POST", info.URL.String(), body)
 	if err != nil {
 		return nil, err
 	}
