@@ -67,9 +67,11 @@ func copyRequest(r *http.Request) (*http.Request, error) {
 		return nil, err
 	}
 	for _, key := range reflectedHeaderFields {
-		value := r.Header.Get(key)
-		if value != "" {
-			c.Header.Add(key, value)
+		values, ok := r.Header[key]
+		if ok {
+			for _, value := range values {
+				c.Header.Add(key, value)
+			}
 		}
 	}
 	// Set the original client IP address in a Meek-IP header. We would use
@@ -106,9 +108,11 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer resp.Body.Close()
 	for _, key := range reflectedHeaderFields {
-		value := resp.Header.Get(key)
-		if value != "" {
-			w.Header().Add(key, value)
+		values, ok := resp.Header[key]
+		if ok {
+			for _, value := range values {
+				w.Header().Add(key, value)
+			}
 		}
 	}
 	w.WriteHeader(resp.StatusCode)
