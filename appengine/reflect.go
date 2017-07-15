@@ -74,7 +74,7 @@ func copyRequest(r *http.Request) (*http.Request, error) {
 	}
 	// Set the original client IP address in a Meek-IP header. We would use
 	// X-Forwarded-For, but App Engine prohibits setting that header:
-	// https://cloud.google.com/appengine/docs/go/urlfetch/#Go_Request_headers
+	// https://cloud.google.com/appengine/docs/standard/go/outbound-requests#request_headers
 	// We could use Forwarded from RFC 7239, but other CDNs already use
 	// X-Forwarded-For and this way we only need one parser.
 	c.Header.Add("Meek-IP", getClientAddr(r))
