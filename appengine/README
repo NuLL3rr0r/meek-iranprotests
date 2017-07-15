@@ -26,5 +26,5 @@ To configure meek-client to talk to the App Engine app, provide
 "https://<appname>.appspot.com/" as the url and "www.google.com" as the
 front domain.
 	UseBridges 1
-	Bridge meek 0.0.2.0:1 url=https://example.appspot.com/ front=www.google.com
+	Bridge meek 0.0.2.0:1 url=https://<appname>.appspot.com/ front=www.google.com
 	ClientTransportPlugin meek exec ./meek-client --log meek-client.log
