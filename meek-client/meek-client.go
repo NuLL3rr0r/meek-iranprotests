@@ -118,6 +118,15 @@ type RequestInfo struct {
 func roundTripWithHTTP(buf []byte, info *RequestInfo) (*http.Response, error) {
 	var body io.Reader
 	if len(buf) > 0 {
+		// Leave body == nil when buf is empty. A nil body is an
+		// explicit signal that the body is empty. An empty
+		// *bytes.Reader or the magic value http.NoBody are supposed to
+		// be equivalent ways to signal an empty body, but in Go 1.8 the
+		// HTTP/2 code only understands nil. Not leaving body == nil
+		// causes the Content-Length header to be omitted from HTTP/2
+		// requests, which in some cases can cause the server to return
+		// a 411 "Length Required" error. See
+		// https://bugs.torproject.org/22865.
 		body = bytes.NewReader(buf)
 	}
 	req, err := http.NewRequest("POST", info.URL.String(), body)
