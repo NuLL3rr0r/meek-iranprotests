@@ -1,17 +1,27 @@
 # How to run a meek-server (meek bridge):
 
+You need a server with a DNS name pointing to it.
+You need to be able to run a service on port 443.
+
+Let's say the server's DNS name is meek.example.com.
+
 - Compile the program using 'go build'.
 
-- Update your torrc file. There's a sample on /meek-server/torrc.
+	cd meek-server
+	go build
 
-	NOTE: if you want to run your bridge on two different ports (HTTP and HTTPS), use something like this:
+- Install meek-server under /usr/local/bin and give it permission to bind to port 443.
 
-	ServerTransportPlugin meek exec /usr/local/bin/meek-server --port 7002 --disable-tls --log /var/log/tor/meek-server.log
-	ServerTransportPlugin meek exec /usr/local/bin/meek-server --port 7443 --cert /etc/meek/cert.pem --key /etc/meek/key.pem --log /var/log/tor/meek-server-https.log
+	cp meek-server /usr/local/bin
+	setcap 'cap_net_bind_service=+ep' /usr/local/bin/meek-server
 
-- To test your bridge on the clinet side, you can add a line like this to your torrc:
+- Add a line to your torrc file. Replace "meek.example.com" with your server's DNS name and "admin@meek.example.com" with your email address.
 
-	Bridge meek 0.0.2.0:1 url=https://my-bridge.example.com:7443/
+	ServerTransportPlugin meek exec /usr/local/bin/meek-server --acme-hostnames meek.example.com --acme-email admin@meek.example.com --log /var/log/tor/meek-server.log
+
+- To test your bridge on the client side, you can add a line like this to your torrc:
+
+	Bridge meek 0.0.2.0:1 url=https://meek.example.com/
 
 # Important Note:
 
