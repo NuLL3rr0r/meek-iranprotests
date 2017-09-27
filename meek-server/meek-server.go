@@ -428,7 +428,7 @@ func main() {
 		// The ACME responder only works when it is running on port 443.
 		// https://letsencrypt.github.io/acme-spec/#domain-validation-with-server-name-indication-dvsni
 		for _, bindaddr := range ptInfo.Bindaddrs {
-			if bindaddr.Addr.Port == 443 {
+			if port == 443 || bindaddr.Addr.Port == 443 {
 				missing443Listener = false
 				break
 			}
