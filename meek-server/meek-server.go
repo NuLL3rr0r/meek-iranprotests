@@ -404,8 +404,8 @@ func main() {
 	//   --cert and --key together
 	//   --disable-tls
 	// The outputs of this block of code are the disableTLS,
-	// missing443Listener, and getCertificate variables.
-	var missing443Listener = false
+	// need443Listener, and getCertificate variables.
+	var need443Listener = false
 	var getCertificate func(*tls.ClientHelloInfo) (*tls.Certificate, error)
 	if disableTLS {
 		if acmeEmail != "" || acmeHostnamesCommas != "" || certFilename != "" || keyFilename != "" {
@@ -424,18 +424,9 @@ func main() {
 		acmeHostnames := strings.Split(acmeHostnamesCommas, ",")
 		log.Printf("ACME hostnames: %q", acmeHostnames)
 
-		missing443Listener = true
 		// The ACME responder only works when it is running on port 443.
 		// https://letsencrypt.github.io/acme-spec/#domain-validation-with-server-name-indication-dvsni
-		for _, bindaddr := range ptInfo.Bindaddrs {
-			if port == 443 || bindaddr.Addr.Port == 443 {
-				missing443Listener = false
-				break
-			}
-		}
-		// Don't quit immediately if we need a 443 listener and don't
-		// have it; do it later in the SMETHOD loop so it appears in the
-		// tor log.
+		need443Listener = true
 
 		var cache autocert.Cache
 		cacheDir, err := getCertificateCacheDir()
@@ -459,20 +450,20 @@ func main() {
 
 	log.Printf("starting version %s (%s)", programVersion, runtime.Version())
 	servers := make([]*http.Server, 0)
+	have443Listener := false
 	for _, bindaddr := range ptInfo.Bindaddrs {
 		if port != 0 {
 			bindaddr.Addr.Port = port
 		}
 		switch bindaddr.MethodName {
 		case ptMethodName:
-			if missing443Listener {
-				pt.SmethodError(bindaddr.MethodName, "The --acme-hostnames option requires one of the bindaddrs to be on port 443.")
-				break
-			}
 			var server *http.Server
 			if disableTLS {
 				server, err = startServer(bindaddr.Addr)
 			} else {
+				if bindaddr.Addr.Port == 443 {
+					have443Listener = true
+				}
 				server, err = startServerTLS(bindaddr.Addr, getCertificate)
 			}
 			if err != nil {
@@ -486,6 +477,13 @@ func main() {
 		}
 	}
 	pt.SmethodsDone()
+
+	// Emit a warning if we're using ACME certificates and don't have a 443
+	// listener. Don't quit, in case the user has made other provisions for
+	// forwarding port 443.
+	if need443Listener && !have443Listener {
+		log.Printf("warning: the --acme-hostnames option requires one of the bindaddrs to be on port 443.")
+	}
 
 	var numHandlers int = 0
 	var sig os.Signal
