@@ -268,6 +268,12 @@ func runMeekClient(helperAddr string, meekClientCommandLine []string) (cmd *exec
 	args := meekClientCommandLine[1:]
 	args = append(args, []string{"--helper", helperAddr}...)
 	cmd = exec.Command(meekClientPath, args...)
+	// Give the subprocess a stdin for TOR_PT_EXIT_ON_STDIN_CLOSE purposes.
+	// https://bugs.torproject.org/24642
+	_, err = cmd.StdinPipe()
+	if err != nil {
+		return
+	}
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	log.Printf("running meek-client command %q", cmd.Args)
