@@ -296,6 +296,11 @@ func main() {
 		log.SetOutput(f)
 	}
 
+	meekClientCommandLine := flag.Args()
+	if len(meekClientCommandLine) == 0 {
+		log.Fatal("need a meek-client command line")
+	}
+
 	// By default, writes to file descriptor 1 and 2 when the descriptor has
 	// been closed will terminate the program with a SIGPIPE signal. This is
 	// a problem because the default log destination is stderr (file
@@ -351,7 +356,7 @@ func main() {
 	}
 
 	// Start meek-client with the helper address.
-	meekClientCmd, err := runMeekClient(helperAddr, flag.Args())
+	meekClientCmd, err := runMeekClient(helperAddr, meekClientCommandLine)
 	if err != nil {
 		log.Print(err)
 		return
