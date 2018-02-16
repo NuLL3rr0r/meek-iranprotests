@@ -42,7 +42,7 @@ import (
 )
 
 const (
-	programVersion = "0.28"
+	programVersion = "0.29"
 
 	ptMethodName = "meek"
 	// Reject session ids shorter than this, as a weak defense against
