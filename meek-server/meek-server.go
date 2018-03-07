@@ -13,9 +13,10 @@
 // 	ServerTransportPlugin meek exec ./meek-server --disable-tls --log meek-server.log
 //
 // The server runs in HTTPS mode by default, getting certificates from Let's
-// Encrypt automatically. The server must be listening on port 443 for the
-// automatic certificates to work. If you have your own certificate, use the
-// --cert and --key options. Use --disable-tls option to run with plain HTTP.
+// Encrypt automatically. The server opens an auxiliary ACME listener on port 80
+// in order for the automatic certificates to work. If you have your own
+// certificate, use the --cert and --key options. Use --disable-tls option to
+// run with plain HTTP.
 package main
 
 import (
@@ -404,8 +405,9 @@ func main() {
 	//   --cert and --key together
 	//   --disable-tls
 	// The outputs of this block of code are the disableTLS,
-	// need443Listener, and getCertificate variables.
-	var need443Listener = false
+	// needHTTP01Listener, certManager, and getCertificate variables.
+	var needHTTP01Listener = false
+	var certManager *autocert.Manager
 	var getCertificate func(*tls.ClientHelloInfo) (*tls.Certificate, error)
 	if disableTLS {
 		if acmeEmail != "" || acmeHostnamesCommas != "" || certFilename != "" || keyFilename != "" {
@@ -424,9 +426,10 @@ func main() {
 		acmeHostnames := strings.Split(acmeHostnamesCommas, ",")
 		log.Printf("ACME hostnames: %q", acmeHostnames)
 
-		// The ACME responder only works when it is running on port 443.
-		// https://letsencrypt.github.io/acme-spec/#domain-validation-with-server-name-indication-dvsni
-		need443Listener = true
+		// The ACME HTTP-01 responder only works when it is running on
+		// port 80.
+		// https://github.com/ietf-wg-acme/acme/blob/master/draft-ietf-acme-acme.md#http-challenge
+		needHTTP01Listener = true
 
 		var cache autocert.Cache
 		cacheDir, err := getCertificateCacheDir()
@@ -437,7 +440,7 @@ func main() {
 			log.Printf("disabling ACME certificate cache: %s", err)
 		}
 
-		certManager := &autocert.Manager{
+		certManager = &autocert.Manager{
 			Prompt:     autocert.AcceptTOS,
 			HostPolicy: autocert.HostWhitelist(acmeHostnames...),
 			Email:      acmeEmail,
@@ -450,20 +453,32 @@ func main() {
 
 	log.Printf("starting version %s (%s)", programVersion, runtime.Version())
 	servers := make([]*http.Server, 0)
-	have443Listener := false
 	for _, bindaddr := range ptInfo.Bindaddrs {
 		if port != 0 {
 			bindaddr.Addr.Port = port
 		}
 		switch bindaddr.MethodName {
 		case ptMethodName:
+			if needHTTP01Listener {
+				needHTTP01Listener = false
+				addr := *bindaddr.Addr
+				addr.Port = 80
+				log.Printf("starting HTTP-01 ACME listener on %s", addr.String())
+				lnHTTP01, err := net.ListenTCP("tcp", &addr)
+				if err != nil {
+					log.Printf("error opening HTTP-01 ACME listener: %s", err)
+					pt.SmethodError(bindaddr.MethodName, "HTTP-01 ACME listener: "+err.Error())
+					continue
+				}
+				go func() {
+					log.Fatal(http.Serve(lnHTTP01, certManager.HTTPHandler(nil)))
+				}()
+			}
+
 			var server *http.Server
 			if disableTLS {
 				server, err = startServer(bindaddr.Addr)
 			} else {
-				if bindaddr.Addr.Port == 443 {
-					have443Listener = true
-				}
 				server, err = startServerTLS(bindaddr.Addr, getCertificate)
 			}
 			if err != nil {
@@ -477,13 +492,6 @@ func main() {
 		}
 	}
 	pt.SmethodsDone()
-
-	// Emit a warning if we're using ACME certificates and don't have a 443
-	// listener. Don't quit, in case the user has made other provisions for
-	// forwarding port 443.
-	if need443Listener && !have443Listener {
-		log.Printf("warning: the --acme-hostnames option requires one of the bindaddrs to be on port 443.")
-	}
 
 	var numHandlers int = 0
 	var sig os.Signal

@@ -1,7 +1,9 @@
 # How to run a meek-server (meek bridge):
 
 You need a server with a DNS name pointing to it.
-You need to be able to run a service on port 443.
+You need to be able to run a service on ports 443 and 80.
+Port 443 is for receiving meek-tunneled HTTPS from the CDN;
+port 80 is for automatic certificates from Let's Encrypt.
 
 Let's say the server's DNS name is meek.example.com.
 
@@ -10,7 +12,7 @@ Let's say the server's DNS name is meek.example.com.
 	cd meek-server
 	go build
 
-- Install meek-server under /usr/local/bin and give it permission to bind to port 443.
+- Install meek-server under /usr/local/bin and give it permission to bind to ports 443 and 80.
 
 	cp meek-server /usr/local/bin
 	setcap 'cap_net_bind_service=+ep' /usr/local/bin/meek-server

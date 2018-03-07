@@ -23,8 +23,8 @@ up certificates:
 
 * **--acme-hostnames**=__HOSTNAME__ (with optional
   **--acme-email**=__EMAIL__) will automatically get certificates for
-  __HOSTNAME__ using Let's Encrypt. This only works when meek-server is
-  running on port 443.
+  __HOSTNAME__ using Let's Encrypt. When you use this option,
+  meek-server will need to be able to listen on port 80.
 * **--cert**=__FILENAME__ and **--key**=__FILENAME__ allow use to use
   your own externally acquired certificate.
 
@@ -42,7 +42,7 @@ ServerTransportListenAddr meek 0.0.0.0:8443
 ServerTransportPlugin meek exec ./meek-server 8443 --cert cert.pem --key key.pem --log meek-server.log
 ----
 
-To listen on port 443 without needed to run as root, on Linux,
+To listen on ports 80 and 443 without needed to run as root, on Linux,
 you can use the `setcap` program, part of libcap2:
 ----
 setcap 'cap_net_bind_service=+ep' /usr/local/bin/meek-server
@@ -56,10 +56,12 @@ OPTIONS
 
 **--acme-hostnames**=__HOSTNAME__[,__HOSTNAME__]...::
     Comma-separated list of hostnames to honor when getting automatic
-    certificates from Let's Encrypt. meek-server has to be running on
-    port 443 in order for the **--acme-hostnames** option to work. The
-    certificates will be cached in the pt_state/meek-certificate-cache
-    directory inside tor state directory.
+    certificates from Let's Encrypt. meek-server will open a special
+    listener on port 80 in order to handle ACME messages; this listener
+    is separate from the one specified by `ServerTransportListenAddr`.
+    The certificates will be cached in the
+    pt_state/meek-certificate-cache directory inside tor state
+    directory.
 
 **--cert**=__FILENAME__::
     Name of a PEM-encoded TLS certificate file. Required unless
