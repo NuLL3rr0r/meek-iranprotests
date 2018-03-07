@@ -63,7 +63,7 @@ OPTIONS
 
 **--cert**=__FILENAME__::
     Name of a PEM-encoded TLS certificate file. Required unless
-    **--disable-tls** is used.
+    **--acme-hostnames** or **--disable-tls** is used.
 
 **--disable-tls**:
     Use plain HTTP rather than HTTPS. This option is only for testing
@@ -71,14 +71,14 @@ OPTIONS
 
 **--key**=__FILENAME__:
     Name of a PEM-encoded TLS private key file. Required unless
-    **--disable-tls** is used.
+    **--acme-hostnames** or **--disable-tls** is used.
 
 **--log**=__FILENAME__::
     Name of a file to write log messages to (default stderr).
 
 **--port**=__PORT__::
-    Port to listen on. Overrides the TOR_PT_SERVER_BINDADDR environment
-    variable set by tor. In most cases you should set the
+    Port to listen on. Overrides the `TOR_PT_SERVER_BINDADDR`
+    environment variable set by tor. In most cases you should set the
     **ServerTransportListenAddr** option in torrc, rather than use the
     **--port** option.
 
