@@ -481,11 +481,8 @@ func main() {
 	for _, ln := range listeners {
 		ln.Close()
 	}
-	for n := range handlerChan {
-		numHandlers += n
-		if numHandlers == 0 {
-			break
-		}
+	for numHandlers > 0 {
+		numHandlers += <-handlerChan
 	}
 
 	log.Printf("done")
