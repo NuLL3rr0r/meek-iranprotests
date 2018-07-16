@@ -40,7 +40,7 @@
 Components.utils.import("resource://gre/modules/XPCOMUtils.jsm");
 
 // https://developer.mozilla.org/en-US/docs/Tools/Browser_Console#Console.jsm
-Components.utils.import("resource://gre/modules/devtools/Console.jsm");
+Components.utils.import("resource://gre/modules/Console.jsm");
 
 // Everything resides within the MeekHTTPHelper namespace. MeekHTTPHelper is
 // also the type from which NSGetFactory is constructed, and it is the top-level
