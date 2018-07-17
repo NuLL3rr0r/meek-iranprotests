@@ -198,6 +198,10 @@ func isBrowserProfileUpToDate(templatePath string, profilePath string) bool {
 }
 
 // Run firefox and return its exec.Cmd and stdout pipe.
+//
+// If the environment variable TOR_BROWSER_MEEK_PROFILE is set, that is used as
+// the path to the Firefox profile to use. Otherwise, the profile is chosen in a
+// platform-specific way (see linux.go, mac.go, windows.go).
 func runFirefox() (cmd *exec.Cmd, stdout io.Reader, err error) {
 	// Mac OS X needs absolute paths for firefox and for the profile.
 	var absFirefoxPath string
