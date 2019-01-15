@@ -42,8 +42,16 @@ type ProxySpec struct {
 }
 
 type HelperRoundTripper struct {
+	HelperAddr   *net.TCPAddr
 	ReadTimeout  time.Duration
 	WriteTimeout time.Duration
+	proxySpec    *ProxySpec
+}
+
+func (rt *HelperRoundTripper) SetProxy(u *url.URL) error {
+	var err error
+	rt.proxySpec, err = makeProxySpec(u)
+	return err
 }
 
 // Return a ProxySpec suitable for the proxy URL in u.
@@ -87,7 +95,7 @@ func makeProxySpec(u *url.URL) (*ProxySpec, error) {
 }
 
 func (rt *HelperRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
-	s, err := net.DialTCP("tcp", nil, options.HelperAddr)
+	s, err := net.DialTCP("tcp", nil, rt.HelperAddr)
 	if err != nil {
 		return nil, err
 	}
@@ -127,10 +135,7 @@ func (rt *HelperRoundTripper) RoundTrip(req *http.Request) (*http.Response, erro
 		}
 	}
 
-	jsonReq.Proxy, err = makeProxySpec(options.ProxyURL)
-	if err != nil {
-		return nil, err
-	}
+	jsonReq.Proxy = rt.proxySpec
 	encReq, err := json.Marshal(&jsonReq)
 	if err != nil {
 		return nil, err

@@ -96,10 +96,10 @@ var helperRoundTripper = &HelperRoundTripper{
 
 // Store for command line options.
 var options struct {
-	URL        string
-	Front      string
-	ProxyURL   *url.URL
-	HelperAddr *net.TCPAddr
+	URL       string
+	Front     string
+	ProxyURL  *url.URL
+	UseHelper bool
 }
 
 // When a connection handler starts, +1 is written to this channel; when it
@@ -178,7 +178,7 @@ again:
 // body back into conn.
 func sendRecv(buf []byte, conn net.Conn, info *RequestInfo) (int64, error) {
 	var rt http.RoundTripper = httpRoundTripper
-	if options.HelperAddr != nil {
+	if options.UseHelper {
 		rt = helperRoundTripper
 	}
 	req, err := makeRequest(buf, info)
@@ -346,7 +346,7 @@ func acceptLoop(ln *pt.SocksListener) error {
 // Return an error if this proxy URL doesn't work with the rest of the
 // configuration.
 func checkProxyURL(u *url.URL) error {
-	if options.HelperAddr == nil {
+	if !options.UseHelper {
 		// Without the helper we only support HTTP proxies.
 		if u.Scheme != "http" {
 			return fmt.Errorf("don't understand proxy URL scheme %q", u.Scheme)
@@ -407,11 +407,12 @@ func main() {
 	}
 
 	if helperAddr != "" {
-		options.HelperAddr, err = net.ResolveTCPAddr("tcp", helperAddr)
+		options.UseHelper = true
+		helperRoundTripper.HelperAddr, err = net.ResolveTCPAddr("tcp", helperAddr)
 		if err != nil {
 			log.Fatalf("can't resolve helper address: %s", err)
 		}
-		log.Printf("using helper on %s", options.HelperAddr)
+		log.Printf("using helper on %s", helperRoundTripper.HelperAddr)
 	}
 
 	if proxy != "" {
@@ -439,6 +440,11 @@ func main() {
 		}
 		log.Printf("using proxy %s", options.ProxyURL.String())
 		httpRoundTripper.Proxy = http.ProxyURL(options.ProxyURL)
+		err = helperRoundTripper.SetProxy(options.ProxyURL)
+		if err != nil {
+			pt.ProxyError(err.Error())
+			log.Fatal(fmt.Sprintf("proxy error: %s", err))
+		}
 		if ptInfo.ProxyURL != nil {
 			pt.ProxyDone()
 		}
