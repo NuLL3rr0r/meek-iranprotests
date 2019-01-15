@@ -186,30 +186,3 @@ func (rt *HelperRoundTripper) RoundTrip(req *http.Request) (*http.Response, erro
 	}
 	return &resp, nil
 }
-
-// Do an HTTP roundtrip through the configured browser extension, using the
-// payload data in buf and the request metadata in info.
-func roundTripWithHelper(buf []byte, info *RequestInfo) (*http.Response, error) {
-	var body io.Reader
-	if len(buf) > 0 {
-		// Leave body == nil when buf is empty. A nil body is an
-		// explicit signal that the body is empty. An empty
-		// *bytes.Reader or the magic value http.NoBody are supposed to
-		// be equivalent ways to signal an empty body, but in Go 1.8 the
-		// HTTP/2 code only understands nil. Not leaving body == nil
-		// causes the Content-Length header to be omitted from HTTP/2
-		// requests, which in some cases can cause the server to return
-		// a 411 "Length Required" error. See
-		// https://bugs.torproject.org/22865.
-		body = bytes.NewReader(buf)
-	}
-	req, err := http.NewRequest("POST", info.URL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-	if info.Host != "" {
-		req.Host = info.Host
-	}
-	req.Header.Set("X-Session-Id", info.SessionID)
-	return helperRoundTripper.RoundTrip(req)
-}

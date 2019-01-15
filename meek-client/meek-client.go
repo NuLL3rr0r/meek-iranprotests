@@ -119,9 +119,9 @@ type RequestInfo struct {
 	Host string
 }
 
-// Do an HTTP roundtrip using the payload data in buf and the request metadata
-// in info.
-func roundTripWithHTTP(buf []byte, info *RequestInfo) (*http.Response, error) {
+// Make an http.Request from the payload data in buf and the request metadata in
+// info.
+func makeRequest(buf []byte, info *RequestInfo) (*http.Request, error) {
 	var body io.Reader
 	if len(buf) > 0 {
 		// Leave body == nil when buf is empty. A nil body is an
@@ -143,7 +143,7 @@ func roundTripWithHTTP(buf []byte, info *RequestInfo) (*http.Response, error) {
 		req.Host = info.Host
 	}
 	req.Header.Set("X-Session-Id", info.SessionID)
-	return httpRoundTripper.RoundTrip(req)
+	return req, nil
 }
 
 // Do a roundtrip, trying at most limit times if there is an HTTP status other
@@ -154,16 +154,12 @@ func roundTripWithHTTP(buf []byte, info *RequestInfo) (*http.Response, error) {
 // which will cause the connection to die. The alternative, though, is to just
 // kill the connection immediately. A better solution would be a system of
 // acknowledgements so we know what to resend after an error.
-func roundTripRetries(buf []byte, info *RequestInfo, limit int) (*http.Response, error) {
-	roundTrip := roundTripWithHTTP
-	if options.HelperAddr != nil {
-		roundTrip = roundTripWithHelper
-	}
+func roundTripRetries(rt http.RoundTripper, req *http.Request, limit int) (*http.Response, error) {
 	var resp *http.Response
 	var err error
 again:
 	limit--
-	resp, err = roundTrip(buf, info)
+	resp, err = rt.RoundTrip(req)
 	// Retry only if the HTTP roundtrip completed without error, but
 	// returned a status other than 200. Other kinds of errors and success
 	// with 200 always return immediately.
@@ -181,7 +177,15 @@ again:
 // Send the data in buf to the remote URL, wait for a reply, and feed the reply
 // body back into conn.
 func sendRecv(buf []byte, conn net.Conn, info *RequestInfo) (int64, error) {
-	resp, err := roundTripRetries(buf, info, maxTries)
+	var rt http.RoundTripper = httpRoundTripper
+	if options.HelperAddr != nil {
+		rt = helperRoundTripper
+	}
+	req, err := makeRequest(buf, info)
+	if err != nil {
+		return 0, err
+	}
+	resp, err := roundTripRetries(rt, req, maxTries)
 	if err != nil {
 		return 0, err
 	}
