@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"net/textproto"
 	"net/url"
 	"strconv"
 	"time"
@@ -38,6 +39,11 @@ type ProxySpec struct {
 	Type string `json:"type"`
 	Host string `json:"host"`
 	Port int    `json:"port"`
+}
+
+type HelperRoundTripper struct {
+	ReadTimeout  time.Duration
+	WriteTimeout time.Duration
 }
 
 // Return a ProxySpec suitable for the proxy URL in u.
@@ -80,9 +86,7 @@ func makeProxySpec(u *url.URL) (*ProxySpec, error) {
 	return spec, nil
 }
 
-// Do an HTTP roundtrip through the configured browser extension, using the
-// payload data in buf and the request metadata in info.
-func roundTripWithHelper(buf []byte, info *RequestInfo) (*http.Response, error) {
+func (rt *HelperRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	s, err := net.DialTCP("tcp", nil, options.HelperAddr)
 	if err != nil {
 		return nil, err
@@ -90,28 +94,51 @@ func roundTripWithHelper(buf []byte, info *RequestInfo) (*http.Response, error) 
 	defer s.Close()
 
 	// Encode our JSON.
-	req := JSONRequest{
-		Method: "POST",
-		URL:    info.URL.String(),
+	jsonReq := JSONRequest{
+		Method: req.Method,
+		URL:    req.URL.String(),
 		Header: make(map[string]string),
-		Body:   buf,
+		Body:   make([]byte, 0),
 	}
-	req.Header["X-Session-Id"] = info.SessionID
-	if info.Host != "" {
-		req.Header["Host"] = info.Host
+
+	// We take only the first value for each header key, due to limitations
+	// in the helper JSON protocol.
+	for key, values := range req.Header {
+		if len(values) == 0 {
+			continue
+		}
+		value := values[0]
+		key = textproto.CanonicalMIMEHeaderKey(key)
+		jsonReq.Header[key] = value
 	}
-	req.Proxy, err = makeProxySpec(options.ProxyURL)
+	// req.Host overrides req.Header.
+	if req.Host != "" {
+		jsonReq.Header["Host"] = req.Host
+	}
+
+	if req.Body != nil {
+		jsonReq.Body, err = ioutil.ReadAll(req.Body)
+		if err != nil {
+			return nil, err
+		}
+		err = req.Body.Close()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	jsonReq.Proxy, err = makeProxySpec(options.ProxyURL)
 	if err != nil {
 		return nil, err
 	}
-	encReq, err := json.Marshal(&req)
+	encReq, err := json.Marshal(&jsonReq)
 	if err != nil {
 		return nil, err
 	}
 	// log.Printf("encoded %s", encReq)
 
 	// Send the request.
-	s.SetWriteDeadline(time.Now().Add(helperWriteTimeout))
+	s.SetWriteDeadline(time.Now().Add(rt.WriteTimeout))
 	err = binary.Write(s, binary.BigEndian, uint32(len(encReq)))
 	if err != nil {
 		return nil, err
@@ -123,7 +150,7 @@ func roundTripWithHelper(buf []byte, info *RequestInfo) (*http.Response, error) 
 
 	// Read the response.
 	var length uint32
-	s.SetReadDeadline(time.Now().Add(helperReadTimeout))
+	s.SetReadDeadline(time.Now().Add(rt.ReadTimeout))
 	err = binary.Read(s, binary.BigEndian, &length)
 	if err != nil {
 		return nil, err
@@ -158,4 +185,31 @@ func roundTripWithHelper(buf []byte, info *RequestInfo) (*http.Response, error) 
 		ContentLength: int64(len(jsonResp.Body)),
 	}
 	return &resp, nil
+}
+
+// Do an HTTP roundtrip through the configured browser extension, using the
+// payload data in buf and the request metadata in info.
+func roundTripWithHelper(buf []byte, info *RequestInfo) (*http.Response, error) {
+	var body io.Reader
+	if len(buf) > 0 {
+		// Leave body == nil when buf is empty. A nil body is an
+		// explicit signal that the body is empty. An empty
+		// *bytes.Reader or the magic value http.NoBody are supposed to
+		// be equivalent ways to signal an empty body, but in Go 1.8 the
+		// HTTP/2 code only understands nil. Not leaving body == nil
+		// causes the Content-Length header to be omitted from HTTP/2
+		// requests, which in some cases can cause the server to return
+		// a 411 "Length Required" error. See
+		// https://bugs.torproject.org/22865.
+		body = bytes.NewReader(buf)
+	}
+	req, err := http.NewRequest("POST", info.URL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+	if info.Host != "" {
+		req.Host = info.Host
+	}
+	req.Header.Set("X-Session-Id", info.SessionID)
+	return helperRoundTripper.RoundTrip(req)
 }

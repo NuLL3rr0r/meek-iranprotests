@@ -83,10 +83,16 @@ const (
 
 var ptInfo pt.ClientInfo
 
-// We use this RoundTripper to make all our requests (when --helper is not
-// used). We use the defaults, except we take control of the Proxy setting
+// We use this RoundTripper to make all our requests when --helper is not
+// in effect. We use the defaults, except we take control of the Proxy setting
 // (notably, disabling the default ProxyFromEnvironment).
-var httpTransport *http.Transport = http.DefaultTransport.(*http.Transport)
+var httpRoundTripper *http.Transport = http.DefaultTransport.(*http.Transport)
+
+// We use this RoundTripper when --helper is in effect.
+var helperRoundTripper = &HelperRoundTripper{
+	ReadTimeout:  helperReadTimeout,
+	WriteTimeout: helperWriteTimeout,
+}
 
 // Store for command line options.
 var options struct {
@@ -137,7 +143,7 @@ func roundTripWithHTTP(buf []byte, info *RequestInfo) (*http.Response, error) {
 		req.Host = info.Host
 	}
 	req.Header.Set("X-Session-Id", info.SessionID)
-	return httpTransport.RoundTrip(req)
+	return httpRoundTripper.RoundTrip(req)
 }
 
 // Do a roundtrip, trying at most limit times if there is an HTTP status other
@@ -411,9 +417,10 @@ func main() {
 		}
 	}
 
-	// Disable the default ProxyFromEnvironment setting. httpTransport.Proxy
-	// is overridden below if options.ProxyURL is set.
-	httpTransport.Proxy = nil
+	// Disable the default ProxyFromEnvironment setting.
+	// httpRoundTripper.Proxy is overridden below if options.ProxyURL is
+	// set.
+	httpRoundTripper.Proxy = nil
 
 	// Command-line proxy overrides managed configuration.
 	if options.ProxyURL == nil {
@@ -427,7 +434,7 @@ func main() {
 			log.Fatal(fmt.Sprintf("proxy error: %s", err))
 		}
 		log.Printf("using proxy %s", options.ProxyURL.String())
-		httpTransport.Proxy = http.ProxyURL(options.ProxyURL)
+		httpRoundTripper.Proxy = http.ProxyURL(options.ProxyURL)
 		if ptInfo.ProxyURL != nil {
 			pt.ProxyDone()
 		}
