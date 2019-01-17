@@ -16,11 +16,9 @@ SYNOPSIS
 DESCRIPTION
 -----------
 meek-client is a transport plugin for Tor that encodes a stream as a
-sequence of HTTP requests and responses. It is usually run with the
-**--url** and **--front** options. The **--url** option controls what
-URL requests are made to; the web server at that URL should be
-configured to forward requests to a meek-server somewhere. The
-**--front** option is for domain name camouflage: The domain name in the
+sequence of HTTP requests and responses. It has a **url** option to
+control what destination server requests are directed to, and a
+**front** option for domain name camouflage: The domain name in the
 URL is replaced by the front domain before the request is made, but the
 Host header inside the HTTP request still points to the original domain.
 The idea is to front through a domain that is not blocked to a domain

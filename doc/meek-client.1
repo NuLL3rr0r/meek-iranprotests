@@ -34,7 +34,7 @@ meek-client \- The meek client transport plugin
 \fBmeek\-client\fR [\fIOPTIONS\fR]
 .SH "DESCRIPTION"
 .sp
-meek\-client is a transport plugin for Tor that encodes a stream as a sequence of HTTP requests and responses\&. It is usually run with the \fB\-\-url\fR and \fB\-\-front\fR options\&. The \fB\-\-url\fR option controls what URL requests are made to; the web server at that URL should be configured to forward requests to a meek\-server somewhere\&. The \fB\-\-front\fR option is for domain name camouflage: The domain name in the URL is replaced by the front domain before the request is made, but the Host header inside the HTTP request still points to the original domain\&. The idea is to front through a domain that is not blocked to a domain that is blocked\&.
+meek\-client is a transport plugin for Tor that encodes a stream as a sequence of HTTP requests and responses\&. It has a \fBurl\fR option to control what destination server requests are directed to, and a \fBfront\fR option for domain name camouflage: The domain name in the URL is replaced by the front domain before the request is made, but the Host header inside the HTTP request still points to the original domain\&. The idea is to front through a domain that is not blocked to a domain that is blocked\&.
 .sp
 Configuration for meek\-client usually appears in a torrc file\&. Most user configuration can happen either through SOCKS args (i\&.e\&., args on a Bridge line) or through command line options\&. SOCKS args take precedence per\-connection over command line options\&. For example, this configuration using SOCKS args:
 .sp
