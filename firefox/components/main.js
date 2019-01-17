@@ -8,14 +8,14 @@
 // data. The data is UTF-8–encoded JSON, having the format
 //  {
 //      "method": "POST",
-//      "url": "https://www.google.com/",
+//      "url": "https://allowed.example/",
 //      "header": {
-//          "Host": "meek-reflect.appspot.com",
+//          "Host": "forbidden.example",
 //          "X-Session-Id": "XXXXXXXXXXX"}
 //      },
 //      "proxy": {
 //          "type": "http",
-//          "host": "proxy.example.com",
+//          "host": "proxy.example",
 //          "port": 8080
 //      },
 //      "body": "...base64..."

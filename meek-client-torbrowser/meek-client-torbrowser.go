@@ -2,7 +2,7 @@
 // meek-client to meek-http-helper running in Tor Browser.
 //
 // Sample usage in torrc (exact paths depend on platform):
-// 	ClientTransportPlugin meek exec ./meek-client-torbrowser --log meek-client-torbrowser.log -- ./meek-client --url=https://meek-reflect.appspot.com/ --front=www.google.com --log meek-client.log
+// 	ClientTransportPlugin meek exec ./meek-client-torbrowser --log meek-client-torbrowser.log -- ./meek-client --url=https://forbidden.example/ --front=allowed.example  --log meek-client.log
 // Everything up to "--" is options for this program. Everything following it is
 // a meek-client command line. The command line for running firefox is implicit
 // and hardcoded in this program.

@@ -32,13 +32,13 @@ Bridge line) or through command line options. SOCKS args take precedence
 per-connection over command line options. For example, this
 configuration using SOCKS args:
 ----
-Bridge meek 0.0.2.0:1 url=https://meek-reflect.appspot.com/ front=www.google.com
+Bridge meek 0.0.2.0:1 url=https://forbidden.example/ front=allowed.example
 ClientTransportPlugin meek exec ./meek-client
 ----
 is the same as this one using command line options:
 ----
 Bridge meek 0.0.2.0:1
-ClientTransportPlugin meek exec ./meek-client --url=https://meek-reflect.appspot.com/ --front=www.google.com
+ClientTransportPlugin meek exec ./meek-client --url=https://forbidden.example/ --front=allowed.example
 ----
 The advantage of SOCKS args is that multiple Bridge lines can have different
 configurations.

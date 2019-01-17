@@ -12,12 +12,13 @@ you are communicating with an allowed domain. It works by putting the
 allowed domain on the "outside" of a request: in the DNS query and the
 SNI TLS extension; and the forbidden domain on the "inside": in the Host
 header of the HTTP request. The trick works with web services that
-ignore the SNI and handle requests based on the Host header. Google,
-with its App Engine infrastructure at appspot.com, is one of these
-services. A client wanting to communicate with a forbidden subdomain of
-appspot.com while appearing to communicate with www.google.com can run
-the client plugin program like this:
-	meek-client --url=https://meek-reflect.appspot.com/ --front=www.google.com
+ignore the SNI and handle requests based on the Host header. A client
+wanting to communicate with the domain forbidden.example while appearing
+to communicate with a different domain, allowed.example, can run the
+client plugin program like this:
+	meek-client --url=https://forbidden.example/ --front=allowed.example
+This can only work when forbidden.example and allowed.example are run on
+the same web service.
 
 meek can use a number of web services as a transport backend. Some of
 these, like CDNs, are very easy to set up for domain fronting: you just
