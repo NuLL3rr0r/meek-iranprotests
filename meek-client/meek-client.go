@@ -117,6 +117,9 @@ type RequestInfo struct {
 	// The Host header to put in the HTTP request (optional and may be
 	// different from the host name in URL).
 	Host string
+	// The RoundTripper to use to send requests. This may vary depending on
+	// the value of global options like --helper.
+	RoundTripper http.RoundTripper
 }
 
 // Make an http.Request from the payload data in buf and the request metadata in
@@ -177,15 +180,11 @@ again:
 // Send the data in buf to the remote URL, wait for a reply, and feed the reply
 // body back into conn.
 func sendRecv(buf []byte, conn net.Conn, info *RequestInfo) (int64, error) {
-	var rt http.RoundTripper = httpRoundTripper
-	if options.UseHelper {
-		rt = helperRoundTripper
-	}
 	req, err := makeRequest(buf, info)
 	if err != nil {
 		return 0, err
 	}
-	resp, err := roundTripRetries(rt, req, maxTries)
+	resp, err := roundTripRetries(info.RoundTripper, req, maxTries)
 	if err != nil {
 		return 0, err
 	}
@@ -317,6 +316,11 @@ func handler(conn *pt.SocksConn) error {
 	if ok {
 		info.Host = info.URL.Host
 		info.URL.Host = front
+	}
+
+	info.RoundTripper = httpRoundTripper
+	if options.UseHelper {
+		info.RoundTripper = helperRoundTripper
 	}
 
 	return copyLoop(conn, &info)
