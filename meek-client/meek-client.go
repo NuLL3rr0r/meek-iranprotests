@@ -81,8 +81,6 @@ const (
 	helperWriteTimeout      = 2 * time.Second
 )
 
-var ptInfo pt.ClientInfo
-
 // We use this RoundTripper to make all our requests when --helper is not
 // in effect. We use the defaults, except we take control of the Proxy setting
 // (notably, disabling the default ProxyFromEnvironment).
@@ -383,7 +381,7 @@ func main() {
 	flag.StringVar(&options.URL, "url", "", "URL to request if no url= SOCKS arg")
 	flag.Parse()
 
-	ptInfo, err = pt.ClientSetup(nil)
+	ptInfo, err := pt.ClientSetup(nil)
 	if err != nil {
 		log.Fatalf("error in ClientSetup: %s", err)
 	}
