@@ -102,10 +102,6 @@ var options struct {
 	UseHelper bool
 }
 
-// When a connection handler starts, +1 is written to this channel; when it
-// ends, -1 is written.
-var handlerChan = make(chan int)
-
 // RequestInfo encapsulates all the configuration used for a request–response
 // roundtrip, including variables that may come from SOCKS args or from the
 // command line.
@@ -279,11 +275,6 @@ func genSessionID() string {
 
 // Callback for new SOCKS requests.
 func handler(conn *pt.SocksConn) error {
-	handlerChan <- 1
-	defer func() {
-		handlerChan <- -1
-	}()
-
 	defer conn.Close()
 	err := conn.Grant(&net.TCPAddr{IP: net.IPv4zero, Port: 0})
 	if err != nil {
@@ -473,8 +464,6 @@ func main() {
 	}
 	pt.CmethodsDone()
 
-	var numHandlers int = 0
-	var sig os.Signal
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGTERM)
 
@@ -488,22 +477,12 @@ func main() {
 		}()
 	}
 
-	// Keep track of handlers and wait for a signal.
-	sig = nil
-	for sig == nil {
-		select {
-		case n := <-handlerChan:
-			numHandlers += n
-		case sig = <-sigChan:
-			log.Printf("got signal %s", sig)
-		}
-	}
+	// Wait for a signal.
+	sig := <-sigChan
+	log.Printf("got signal %s", sig)
 
 	for _, ln := range listeners {
 		ln.Close()
-	}
-	for numHandlers > 0 {
-		numHandlers += <-handlerChan
 	}
 
 	log.Printf("done")

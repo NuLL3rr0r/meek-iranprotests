@@ -70,10 +70,6 @@ const (
 
 var ptInfo pt.ServerInfo
 
-// When a connection handler starts, +1 is written to this channel; when it
-// ends, -1 is written.
-var handlerChan = make(chan int)
-
 func httpBadRequest(w http.ResponseWriter) {
 	http.Error(w, "Bad request.", http.StatusBadRequest)
 }
@@ -115,11 +111,6 @@ func NewState() *State {
 }
 
 func (state *State) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	handlerChan <- 1
-	defer func() {
-		handlerChan <- -1
-	}()
-
 	switch req.Method {
 	case "GET":
 		state.Get(w, req)
@@ -494,8 +485,6 @@ func main() {
 	}
 	pt.SmethodsDone()
 
-	var numHandlers int = 0
-	var sig os.Signal
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGTERM)
 
@@ -510,15 +499,8 @@ func main() {
 	}
 
 	// Keep track of handlers and wait for a signal.
-	sig = nil
-	for sig == nil {
-		select {
-		case n := <-handlerChan:
-			numHandlers += n
-		case sig = <-sigChan:
-			log.Printf("got signal %s", sig)
-		}
-	}
+	sig := <-sigChan
+	log.Printf("got signal %s", sig)
 
 	/*
 		// Not supported until go1.8.
@@ -526,9 +508,6 @@ func main() {
 			server.Close()
 		}
 	*/
-	for numHandlers > 0 {
-		numHandlers += <-handlerChan
-	}
 
 	log.Printf("done")
 }
