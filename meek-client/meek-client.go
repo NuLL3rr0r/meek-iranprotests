@@ -79,9 +79,9 @@ const (
 	helperWriteTimeout      = 2 * time.Second
 )
 
-// We use this RoundTripper to make all our requests when --helper is not
-// in effect. We use the defaults, except we take control of the Proxy setting
-// (notably, disabling the default ProxyFromEnvironment).
+// We use this RoundTripper to make all our requests when neither --helper nor
+// utls is in effect. We use the defaults, except we take control of the Proxy
+// setting (notably, disabling the default ProxyFromEnvironment).
 var httpRoundTripper *http.Transport = http.DefaultTransport.(*http.Transport)
 
 // We use this RoundTripper when --helper is in effect.
@@ -96,6 +96,7 @@ var options struct {
 	Front     string
 	ProxyURL  *url.URL
 	UseHelper bool
+	UTLSName  string
 }
 
 // RequestInfo encapsulates all the configuration used for a request–response
@@ -307,9 +308,29 @@ func handler(conn *pt.SocksConn) error {
 		info.URL.Host = front
 	}
 
-	info.RoundTripper = httpRoundTripper
+	// First check utls= SOCKS arg, then --utls option.
+	utlsName, utlsOK := conn.Req.Args.Get("utls")
+	if utlsOK {
+	} else if options.UTLSName != "" {
+		utlsName = options.UTLSName
+		utlsOK = true
+	}
+
+	// First we check --helper: if it was specified, then we always use the
+	// helper, and utls is disallowed. Otherwise, we use utls if requested;
+	// or else fall back to native net/http.
 	if options.UseHelper {
+		if utlsOK {
+			return fmt.Errorf("cannot use utls with --helper")
+		}
 		info.RoundTripper = helperRoundTripper
+	} else if utlsOK {
+		info.RoundTripper, err = NewUTLSRoundTripper(utlsName, nil)
+		if err != nil {
+			return err
+		}
+	} else {
+		info.RoundTripper = httpRoundTripper
 	}
 
 	return copyLoop(conn, &info)
@@ -387,6 +408,7 @@ func main() {
 	flag.StringVar(&logFilename, "log", "", "name of log file")
 	flag.StringVar(&proxy, "proxy", "", "proxy URL")
 	flag.StringVar(&options.URL, "url", "", "URL to request if no url= SOCKS arg")
+	flag.StringVar(&options.UTLSName, "utls", "", "uTLS Client Hello ID")
 	flag.Parse()
 
 	ptInfo, err := pt.ClientSetup(nil)
