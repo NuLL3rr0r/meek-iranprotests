@@ -2,12 +2,12 @@
 .\"     Title: meek-client
 .\"    Author: [FIXME: author] [see http://docbook.sf.net/el/author]
 .\" Generator: DocBook XSL Stylesheets v1.79.1 <http://docbook.sf.net/>
-.\"      Date: 02/01/2019
+.\"      Date: 02/06/2019
 .\"    Manual: \ \&
 .\"    Source: \ \&
 .\"  Language: English
 .\"
-.TH "MEEK\-CLIENT" "1" "02/01/2019" "\ \&" "\ \&"
+.TH "MEEK\-CLIENT" "1" "02/06/2019" "\ \&" "\ \&"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -53,6 +53,153 @@ arg\&.
 Front domain name\&. If provided, this domain name will replace the domain name of
 \fBurl\fR
 in the DNS request and TLS SNI field\&. The URL\(cqs true domain name will still appear in the Host header of HTTP requests\&.
+.RE
+.PP
+\fButls\fR=\fICLIENTHELLOID\fR
+.RS 4
+Use the
+uTLS library
+with the named TLS fingerprint for TLS camouflage\&. This arg is incompatible with the
+\fB\-\-helper\fR
+command line option\&. The possible values of
+\fICLIENTHELLOID\fR
+are:
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+HelloRandomizedALPN
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+HelloRandomizedNoALPN
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+HelloFirefox_55
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+HelloFirefox_56
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+HelloFirefox_63
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+HelloFirefox_Auto
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+HelloChrome_58
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+HelloChrome_62
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+HelloChrome_70
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+HelloChrome_Auto
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+HelloIOS_11_1
+.RE
+.sp
+.RS 4
+.ie n \{\
+\h'-04'\(bu\h'+03'\c
+.\}
+.el \{\
+.sp -1
+.IP \(bu 2.3
+.\}
+HelloIOS_Auto
+.RE
+.sp
+As a special case, the values "none" and "HelloGolang" are recognized as aliases for omitting the
+\fButls\fR
+SOCKS arg; i\&.e\&., use native Go TLS\&.
 .RE
 .sp
 For backward compatibility, each SOCKS arg also has an equivalent command line option\&. For example, this configuration using SOCKS args:
@@ -142,6 +289,14 @@ Name of a file to write log messages to (default stderr)\&.
 URL to correspond with\&. Prefer using the
 \fBurl\fR
 SOCKS arg on a bridge line over using this command line option\&.
+.RE
+.PP
+\fB\-\-utls\fR=\fICLIENTHELLOID\fR
+.RS 4
+Use uTLS with the given TLS fingerprint for TLS camouflage\&. This option is incompatible with
+\fB\-\-helper\fR\&. Prefer using the
+\fButls\fR
+SOCKS arg over using this command line option\&.
 .RE
 .PP
 \fB\-h\fR, \fB\-\-help\fR

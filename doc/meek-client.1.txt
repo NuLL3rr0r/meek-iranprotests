@@ -43,6 +43,31 @@ The possible SOCKS args are:
     of **url** in the DNS request and TLS SNI field.
     The URL's true domain name will still appear in the Host header
     of HTTP requests.
+**utls**=__CLIENTHELLOID__::
++
+--
+Use the https://github.com/refraction-networking/utls[uTLS library]
+with the named TLS fingerprint for TLS camouflage.
+This arg is incompatible with the **--helper** command line option.
+The possible values of __CLIENTHELLOID__ are:
+
+- HelloRandomizedALPN
+- HelloRandomizedNoALPN
+- HelloFirefox_55
+- HelloFirefox_56
+- HelloFirefox_63
+- HelloFirefox_Auto
+- HelloChrome_58
+- HelloChrome_62
+- HelloChrome_70
+- HelloChrome_Auto
+- HelloIOS_11_1
+- HelloIOS_Auto
+
+As a special case, the values "none" and "HelloGolang"
+are recognized as aliases for
+omitting the **utls** SOCKS arg; i.e., use native Go TLS.
+--
 
 For backward compatibility, each SOCKS arg also has an equivalent
 command line option.
@@ -108,6 +133,11 @@ OPTIONS
 **--url**=__URL__::
     URL to correspond with. Prefer using the **url** SOCKS arg
     on a bridge line over using this command line option.
+
+**--utls**=__CLIENTHELLOID__::
+    Use uTLS with the given TLS fingerprint for TLS camouflage.
+    This option is incompatible with **--helper**.
+    Prefer using the **utls** SOCKS arg over using this command line option.
 
 **-h**, **--help**::
     Display a help message and exit.
