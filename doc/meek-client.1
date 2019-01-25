@@ -2,12 +2,12 @@
 .\"     Title: meek-client
 .\"    Author: [FIXME: author] [see http://docbook.sf.net/el/author]
 .\" Generator: DocBook XSL Stylesheets v1.79.1 <http://docbook.sf.net/>
-.\"      Date: 01/17/2019
+.\"      Date: 01/25/2019
 .\"    Manual: \ \&
 .\"    Source: \ \&
 .\"  Language: English
 .\"
-.TH "MEEK\-CLIENT" "1" "01/17/2019" "\ \&" "\ \&"
+.TH "MEEK\-CLIENT" "1" "01/25/2019" "\ \&" "\ \&"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -35,8 +35,29 @@ meek-client \- The meek client transport plugin
 .SH "DESCRIPTION"
 .sp
 meek\-client is a transport plugin for Tor that encodes a stream as a sequence of HTTP requests and responses\&. It has a \fBurl\fR option to control what destination server requests are directed to, and a \fBfront\fR option for domain name camouflage: The domain name in the URL is replaced by the front domain before the request is made, but the Host header inside the HTTP request still points to the original domain\&. The idea is to front through a domain that is not blocked to a domain that is blocked\&.
+.SH "CONFIGURATION"
 .sp
-Configuration for meek\-client usually appears in a torrc file\&. Most user configuration can happen either through SOCKS args (i\&.e\&., args on a Bridge line) or through command line options\&. SOCKS args take precedence per\-connection over command line options\&. For example, this configuration using SOCKS args:
+Configuration for meek\-client usually happens in a torrc file\&.
+.sp
+Per\-bridge options are configured with SOCKS args (key=value pairs in a Bridge line)\&. The possible SOCKS args are:
+.PP
+\fBSOCKS args\fR
+.PP
+\fBurl\fR=\fIURL\fR (required)
+.RS 4
+The URL of a meek\-server instance\&. The domain name component will typically be hidden by the value in the
+\fBfront\fR
+arg\&.
+.RE
+.PP
+\fBfront\fR=\fIDOMAIN\fR
+.RS 4
+Front domain name\&. If provided, this domain name will replace the domain name of
+\fBurl\fR
+in the DNS request and TLS SNI field\&. The URL\(cqs true domain name will still appear in the Host header of HTTP requests\&.
+.RE
+.sp
+For backward compatibility, each SOCKS arg also has an equivalent command line option\&. For example, this configuration using SOCKS args:
 .sp
 .if n \{\
 .RS 4
@@ -62,11 +83,11 @@ ClientTransportPlugin meek exec \&./meek\-client \-\-url=https://forbidden\&.exa
 .RE
 .\}
 .sp
-The advantage of SOCKS args is that multiple Bridge lines can have different configurations\&.
+SOCKS args are preferred over command line options because they allow you to have multiple Bridge lines with different settings\&. If a SOCKS arg and a command line option are both given for the same setting, the SOCKS arg takes precedence\&.
 .sp
-The \fB\-\-helper\fR option prevents meek\-client from doing any network operations itself\&. Rather, it will send all requests through a browser extension, which must be set up separately\&.
+The global \fB\-\-helper\fR option prevents meek\-client from doing any network operations itself\&. Rather, it will send all requests through a browser extension, which must be set up separately\&.
 .sp
-You can also control an upstream proxy using torrc options:
+A global proxy (applies to all Bridge lines) can be configured using special torrc options:
 .sp
 .if n \{\
 .RS 4
@@ -80,22 +101,22 @@ Socks5Proxy localhost:1080
 .RE
 .\}
 .sp
-or, equivalently, using the \fB\-\-proxy\fR command\-line option\&.
+or, equivalently, using the \fB\-\-proxy\fR command line option\&. The command line option takes precedence\&.
 .sp
 When the \fB\-\-helper\fR option is used, you can use any type of proxy: HTTP or SOCKS\&. Without \fB\-\-helper\fR, you can only use an HTTP proxy\&.
 .SH "OPTIONS"
 .PP
 \fB\-\-front\fR=\fIDOMAIN\fR
 .RS 4
-Front domain name\&. The
+Front domain name\&. Prefer using the
 \fBfront\fR
-SOCKS arg overrides the command line\&.
+SOCKS arg on a bridge line over using this command line option\&.
 .RE
 .PP
 \fB\-\-helper\fR=\fIADDRESS\fR
 .RS 4
 Address of HTTP helper browser extension\&. For example,
-\fB\-\-helper 127\&.0\&.0\&.1:7000\fR\&.
+\fB\-\-helper=127\&.0\&.0\&.1:7000\fR\&.
 .RE
 .PP
 \fB\-\-proxy\fR=\fIURL\fR
@@ -103,11 +124,11 @@ Address of HTTP helper browser extension\&. For example,
 URL of upstream proxy\&. For example,
 \fB\-\-proxy=http://localhost:8080/\fR,
 \fB\-\-proxy=socks4a://localhost:1080\fR, or
-\fB\-\-proxy=socks5://localhost:1080\fR\&. You would normally control the proxy using the
+\fB\-\-proxy=socks5://localhost:1080\fR\&. Can also be configured using the
 \fBHTTPSProxy\fR,
 \fBSocks4Proxy\fR, or
 \fBSocks5Proxy\fR
-configuration options in a torrc file, instead of using this option\&.
+options in a torrc file\&.
 .RE
 .PP
 \fB\-\-log\fR=\fIFILENAME\fR
@@ -117,8 +138,9 @@ Name of a file to write log messages to (default stderr)\&.
 .PP
 \fB\-\-url\fR=\fIURL\fR
 .RS 4
-URL to correspond with\&. The domain part of the URL may be modified by
-\fB\-\-front\fR\&.
+URL to correspond with\&. Prefer using the
+\fBurl\fR
+SOCKS arg on a bridge line over using this command line option\&.
 .RE
 .PP
 \fB\-h\fR, \fB\-\-help\fR
