@@ -75,8 +75,10 @@ Socks5Proxy localhost:1080
 or, equivalently, using the **--proxy** command line option.
 The command line option takes precedence.
 
-When the **--helper** option is used, you can use any type of proxy:
-HTTP or SOCKS. Without **--helper**, you can only use an HTTP proxy.
+When the **--helper** option is used, you can use proxies of type
+http, socks4a, or socks5.
+Without **--helper**, you can use proxies of type
+http, https, or socks5.
 
 OPTIONS
 -------

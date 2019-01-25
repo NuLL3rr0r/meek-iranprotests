@@ -338,8 +338,16 @@ func acceptLoop(ln *pt.SocksListener) error {
 // configuration.
 func checkProxyURL(u *url.URL) error {
 	if !options.UseHelper {
-		// Without the helper we only support HTTP proxies.
-		if u.Scheme != "http" {
+		// Without the helper, we use net/http's built-in proxy support,
+		// which allows "http", "https", and "socks5".
+		// socks5 requires go1.9: https://golang.org/doc/go1.9#net/http
+		// https requires go1.10: https://golang.org/doc/go1.10#net/http
+		// If using an older version of Go, the proxy won't be bypassed;
+		// you'll just get an error at connection time rather than
+		// TOR_PT_PROXY time.
+		switch u.Scheme {
+		case "http", "https", "socks5":
+		default:
 			return fmt.Errorf("don't understand proxy URL scheme %q", u.Scheme)
 		}
 	} else {
