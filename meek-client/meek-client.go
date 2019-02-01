@@ -439,10 +439,12 @@ func main() {
 		}
 		log.Printf("using proxy %s", options.ProxyURL.String())
 		httpRoundTripper.Proxy = http.ProxyURL(options.ProxyURL)
-		err = helperRoundTripper.SetProxy(options.ProxyURL)
-		if err != nil {
-			pt.ProxyError(err.Error())
-			log.Fatal(fmt.Sprintf("proxy error: %s", err))
+		if options.UseHelper {
+			err = helperRoundTripper.SetProxy(options.ProxyURL)
+			if err != nil {
+				pt.ProxyError(err.Error())
+				log.Fatal(fmt.Sprintf("proxy error: %s", err))
+			}
 		}
 		if ptInfo.ProxyURL != nil {
 			pt.ProxyDone()
