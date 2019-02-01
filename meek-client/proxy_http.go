@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 
+	utls "github.com/refraction-networking/utls"
 	"golang.org/x/net/proxy"
 )
 
@@ -72,5 +73,31 @@ func ProxyHTTP(network, addr string, auth *proxy.Auth, forward proxy.Dialer) (*h
 		addr:    addr,
 		auth:    auth,
 		forward: forward,
+	}, nil
+}
+
+type UTLSDialer struct {
+	config        *utls.Config
+	clientHelloID *utls.ClientHelloID
+	forward       proxy.Dialer
+}
+
+func (dialer *UTLSDialer) Dial(network, addr string) (net.Conn, error) {
+	return dialUTLS(network, addr, dialer.config, dialer.clientHelloID, dialer.forward)
+}
+
+func ProxyHTTPS(network, addr string, auth *proxy.Auth, forward proxy.Dialer, cfg *utls.Config, clientHelloID *utls.ClientHelloID) (*httpProxy, error) {
+	return &httpProxy{
+		network: network,
+		addr:    addr,
+		auth:    auth,
+		forward: &UTLSDialer{
+			config: cfg,
+			// We use the same uTLS ClientHelloID for the TLS
+			// connection to the HTTPS proxy, as we use for the TLS
+			// connection through the tunnel.
+			clientHelloID: clientHelloID,
+			forward:       forward,
+		},
 	}, nil
 }

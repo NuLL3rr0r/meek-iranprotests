@@ -264,6 +264,7 @@ func TestUTLSHTTPWithProxy(t *testing.T) {
 	for _, proxyURL := range []url.URL{
 		url.URL{Scheme: "socks5", Host: proxyLn.Addr().String()},
 		url.URL{Scheme: "http", Host: proxyLn.Addr().String()},
+		url.URL{Scheme: "https", Host: proxyLn.Addr().String()},
 	} {
 		rt, err := NewUTLSRoundTripper("HelloFirefox_63", &utls.Config{InsecureSkipVerify: true}, &proxyURL)
 		if err != nil {

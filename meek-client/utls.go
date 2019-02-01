@@ -155,7 +155,7 @@ func (rt *UTLSRoundTripper) RoundTrip(req *http.Request) (*http.Response, error)
 // use by setting Proxy on an http.Transport), and unlike when using the browser
 // helper (the browser has its own proxy support), when using uTLS we have to
 // craft our own proxy connections.
-func makeProxyDialer(proxyURL *url.URL) (proxy.Dialer, error) {
+func makeProxyDialer(proxyURL *url.URL, cfg *utls.Config, clientHelloID *utls.ClientHelloID) (proxy.Dialer, error) {
 	var proxyDialer proxy.Dialer = proxy.Direct
 	if proxyURL == nil {
 		return proxyDialer, nil
@@ -181,6 +181,16 @@ func makeProxyDialer(proxyURL *url.URL) (proxy.Dialer, error) {
 		proxyDialer, err = proxy.SOCKS5("tcp", proxyAddr, auth, proxyDialer)
 	case "http":
 		proxyDialer, err = ProxyHTTP("tcp", proxyAddr, auth, proxyDialer)
+	case "https":
+		// We use the same uTLS Config for TLS to the HTTPS proxy, as we
+		// use for HTTPS connections through the tunnel. We make a clone
+		// of the Config to avoid concurrent modification as the two
+		// layers set the ServerName value.
+		var cfgClone *utls.Config
+		if cfg != nil {
+			cfgClone = cfg.Clone()
+		}
+		proxyDialer, err = ProxyHTTPS("tcp", proxyAddr, auth, proxyDialer, cfgClone, clientHelloID)
 	default:
 		return nil, fmt.Errorf("cannot use proxy scheme %q with uTLS", proxyURL.Scheme)
 	}
@@ -293,7 +303,7 @@ func NewUTLSRoundTripper(name string, cfg *utls.Config, proxyURL *url.URL) (http
 		return httpRoundTripper, nil
 	}
 
-	proxyDialer, err := makeProxyDialer(proxyURL)
+	proxyDialer, err := makeProxyDialer(proxyURL, cfg, clientHelloID)
 	if err != nil {
 		return nil, err
 	}
