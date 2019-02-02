@@ -230,3 +230,52 @@ func TestUTLSServerName(t *testing.T) {
 		t.Errorf("expected \"test.example\" server_name extension with given ServerName and hostname dial")
 	}
 }
+
+// Test that HTTP requests (which don't go through the uTLS code path) still use
+// any proxy that's configured on the UTLSRoundTripper.
+func TestUTLSHTTPWithProxy(t *testing.T) {
+	// Make a web server that we should *not* be able to reach.
+	server := &http.Server{
+		Handler: http.NotFoundHandler(),
+	}
+	serverLn, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		panic(err)
+	}
+	defer serverLn.Close()
+	go server.Serve(serverLn)
+
+	// Make a non-functional proxy server.
+	proxyLn, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		panic(err)
+	}
+	defer proxyLn.Close()
+	go func() {
+		for {
+			conn, err := proxyLn.Accept()
+			if err == nil {
+				conn.Close() // go away
+			}
+		}
+	}()
+
+	// Try to access the web server through the non-functional proxy.
+	for _, proxyURL := range []url.URL{
+		url.URL{Scheme: "socks5", Host: proxyLn.Addr().String()},
+	} {
+		rt, err := NewUTLSRoundTripper("HelloFirefox_63", &utls.Config{InsecureSkipVerify: true}, &proxyURL)
+		if err != nil {
+			panic(err)
+		}
+		fetchURL := url.URL{Scheme: "http", Host: serverLn.Addr().String()}
+		req, err := http.NewRequest("GET", fetchURL.String(), nil)
+		if err != nil {
+			panic(err)
+		}
+		_, err = rt.RoundTrip(req)
+		if err == nil {
+			t.Errorf("fetch of %s through %s proxy should have failed", &fetchURL, proxyURL.Scheme)
+		}
+	}
+}
