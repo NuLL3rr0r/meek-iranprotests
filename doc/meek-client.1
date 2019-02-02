@@ -2,12 +2,12 @@
 .\"     Title: meek-client
 .\"    Author: [FIXME: author] [see http://docbook.sf.net/el/author]
 .\" Generator: DocBook XSL Stylesheets v1.79.1 <http://docbook.sf.net/>
-.\"      Date: 01/25/2019
+.\"      Date: 02/01/2019
 .\"    Manual: \ \&
 .\"    Source: \ \&
 .\"  Language: English
 .\"
-.TH "MEEK\-CLIENT" "1" "01/25/2019" "\ \&" "\ \&"
+.TH "MEEK\-CLIENT" "1" "02/01/2019" "\ \&" "\ \&"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -91,9 +91,12 @@ A global proxy (applies to all Bridge lines) can be configured using special tor
 .RS 4
 .\}
 .nf
-HTTPSProxy localhost:8080
 Socks4Proxy localhost:1080
 Socks5Proxy localhost:1080
+Socks5ProxyUsername username
+Socks5ProxyPassword password
+HTTPSProxy localhost:8080
+HTTPSProxyAuthenticator username:password
 .fi
 .if n \{\
 .RE
@@ -101,7 +104,7 @@ Socks5Proxy localhost:1080
 .sp
 or, equivalently, using the \fB\-\-proxy\fR command line option\&. The command line option takes precedence\&.
 .sp
-When the \fB\-\-helper\fR option is used, you can use proxies of type http, socks4a, or socks5\&. Without \fB\-\-helper\fR, you can use proxies of type http, https, or socks5\&.
+When the \fB\-\-helper\fR option is used, you can use proxies of type http, socks4a, or socks5, but you cannot use a username or password with the proxy\&. Without \fB\-\-helper\fR, you can use proxies of type http, https, or socks5, and you can optionally use a username and password\&.
 .SH "OPTIONS"
 .PP
 \fB\-\-front\fR=\fIDOMAIN\fR

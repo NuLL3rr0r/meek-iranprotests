@@ -68,17 +68,20 @@ extension, which must be set up separately.
 A global proxy (applies to all Bridge lines)
 can be configured using special torrc options:
 ----
-HTTPSProxy localhost:8080
 Socks4Proxy localhost:1080
 Socks5Proxy localhost:1080
+Socks5ProxyUsername username
+Socks5ProxyPassword password
+HTTPSProxy localhost:8080
+HTTPSProxyAuthenticator username:password
 ----
 or, equivalently, using the **--proxy** command line option.
 The command line option takes precedence.
 
 When the **--helper** option is used, you can use proxies of type
-http, socks4a, or socks5.
+http, socks4a, or socks5, but you cannot use a username or password with the proxy.
 Without **--helper**, you can use proxies of type
-http, https, or socks5.
+http, https, or socks5, and you can optionally use a username and password.
 
 OPTIONS
 -------
