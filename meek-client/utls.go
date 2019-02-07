@@ -179,6 +179,8 @@ func makeProxyDialer(proxyURL *url.URL) (proxy.Dialer, error) {
 	switch proxyURL.Scheme {
 	case "socks5":
 		proxyDialer, err = proxy.SOCKS5("tcp", proxyAddr, auth, proxyDialer)
+	case "http":
+		proxyDialer, err = ProxyHTTP("tcp", proxyAddr, auth, proxyDialer)
 	default:
 		return nil, fmt.Errorf("cannot use proxy scheme %q with uTLS", proxyURL.Scheme)
 	}
