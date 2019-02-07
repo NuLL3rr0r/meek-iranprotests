@@ -391,14 +391,4 @@ func main() {
 	if err != nil {
 		log.Print(err)
 	}
-
-	// If SIGINT, wait for a second SIGINT.
-	if sig == syscall.SIGINT {
-		sig := <-sigChan
-		log.Printf("sig %s", sig)
-		err = logSignal(meekClientCmd.Process, sig)
-		if err != nil {
-			log.Print(err)
-		}
-	}
 }
