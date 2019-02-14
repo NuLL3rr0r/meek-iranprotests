@@ -1,0 +1,51 @@
+Installation guide for the meek-http-helper WebExtension.
+
+The WebExtension is made of two parts: the extension and the native
+application. The extension itself is JavaScript, runs in the browser,
+and is responsible for making HTTP requests as instructed. The native
+application runs as a subprocess of the browser; its job is to open a
+localhost socket and act as an intermediary between the extension and
+meek-client, because the extension cannot open a socket by itself.
+
+These instructions require Firefox 65.
+
+1. Compile the native application.
+       cd native && go build
+
+2. Edit meek.http.helper.json and set the "path" field to the path to
+   the native application.
+       "path": "/where/you/installed/native",
+
+3. Copy the edited meek.http.helper.json file to the OS-appropriate
+   location.
+       # macOS
+       mkdir -p ~/"Library/Application Support/Mozilla/NativeMessagingHosts/"
+       cp meek.http.helper.json ~/"Library/Application Support/Mozilla/NativeMessagingHosts/"
+       # other Unix
+       mkdir -p ~/.mozilla/native-messaging-hosts/
+       cp meek.http.helper.json ~/.mozilla/native-messaging-hosts/
+   The meek.http.helper.json file is called the "host manifest" or "app
+   manifest" and it tells the browser where to find the native part of
+   the WebExtension. More information:
+       https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/Native_manifests#Manifest_location
+
+4. Run Firefox in a terminal so you can see its stdout. In Firefox, go
+   to about:config and set
+       browser.dom.window.dump.enabled=true
+   This enables the extension to write to stdout.
+
+5. In Firefox, go to about:debugging and click "Load Temporary
+   Add-on...". Find manifest.json and click Open.
+   More information:
+       https://developer.mozilla.org/en-US/docs/Tools/about:debugging#Loading_a_temporary_add-on
+   In the terminal, you should see a line like this, with a random port
+   number in place of XXXX:
+       meek-http-helper: listen 127.0.0.1:XXXX
+
+Now the extension is running and ready to start making requests. You can
+run "meek-client --helper", passing it the correct port number XXXX:
+	UseBridges 1
+	ClientTransportPlugin meek exec ./meek-client --helper 127.0.0.1:XXXX --log meek-client.log
+	Bridge meek 0.0.2.0:1 url=https://meek.bamsoftware.com/
+
+To debug, open the browser console with Ctrl+Shift+J.

@@ -1,0 +1,9 @@
+{
+	"name": "meek.http.helper",
+	"description": "Native half of meek-http-helper.",
+	"path": "/path/to/native",
+	"type": "stdio",
+	"allowed_extensions": [
+		"meek-http-helper@bamsoftware.com"
+	]
+}

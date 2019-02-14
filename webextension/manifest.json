@@ -1,0 +1,22 @@
+{
+	"manifest_version": 2,
+	"name": "meek HTTP helper",
+	"description": "Makes HTTP requests on behalf of meek-client.",
+	"version": "1.0",
+
+	"browser_specific_settings": {
+		"gecko": {
+			"id": "meek-http-helper@bamsoftware.com"
+		}
+	},
+
+	"background": {
+		"scripts": ["background.js"]
+	},
+
+	"permissions": [
+		"nativeMessaging",
+		"https://*/*",
+		"http://*/*"
+	]
+}
