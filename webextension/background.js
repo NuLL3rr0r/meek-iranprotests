@@ -79,7 +79,7 @@ function base64_encode(dec_buf) {
     return btoa(dec_str);
 }
 
-function roundtrip(id, request) {
+async function roundtrip(request) {
     // Process the incoming request spec and convert it into parameters to the
     // fetch API. Also enforce some restrictions on what kinds of requests we
     // are willing to make.
@@ -119,28 +119,26 @@ function roundtrip(id, request) {
         // TODO: strip Origin header?
         // TODO: proxy
     } catch (error) {
-        port.postMessage({id, response: {error: `request spec failed valiation: ${error.message}`}});
-        return;
+        return {error: `request spec failed valiation: ${error.message}`};
     }
 
-    // Now actually do the request and send the result back to the native
-    // process.
-    fetch(url, init)
-        .then(resp => resp.arrayBuffer().then(body => ({
-            status: resp.status,
-            body: base64_encode(body),
-        })))
+    // Now actually do the request and build a response object.
+    try {
+        let resp = await fetch(url, init);
+        let body = await resp.arrayBuffer();
+        return {status: resp.status, body: base64_encode(body)};
+    } catch (error) {
         // Convert any errors into an error response.
-        .catch(error => ({error: error.message}))
-        // Send the response (success or failure) back to the requester, tagged
-        // with its ID.
-        .then(response => port.postMessage({id, response}));
+        return {error: error.message};
+    }
 }
 
 port.onMessage.addListener((message) => {
     switch (message.command) {
         case "roundtrip":
-            roundtrip(message.id, message.request);
+            // Do a roundtrip and send the result back to the native process.
+            roundtrip(message.request)
+                .then(response => port.postMessage({id: message.id, response}));
             break;
         case "report-address":
             // Tell meek-client where our subprocess (the one that actually
