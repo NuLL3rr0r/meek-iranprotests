@@ -83,6 +83,7 @@ function roundtrip(id, request) {
     // Process the incoming request spec and convert it into parameters to the
     // fetch API. Also enforce some restrictions on what kinds of requests we
     // are willing to make.
+    // https://developer.mozilla.org/en-US/docs/Web/API/WindowOrWorkerGlobalScope/fetch#Parameters
     let url;
     let init = {};
     try {
@@ -106,6 +107,13 @@ function roundtrip(id, request) {
         if (request.body != null && request.body !== "") {
             init.body = base64_decode(request.body);
         }
+
+        // Do not read nor write from the browser's HTTP cache.
+        init.cache = "no-store";
+        // Don't send cookies.
+        init.credentials = "omit";
+        // Don't follow redirects (we'll get resp.status:0 if there is one).
+        init.redirect = "manual";
 
         // TODO: Host header
         // TODO: strip Origin header?
