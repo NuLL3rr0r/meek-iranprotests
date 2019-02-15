@@ -79,6 +79,27 @@ function base64_encode(dec_buf) {
     return btoa(dec_str);
 }
 
+// A Mutex's lock function returns a promise that resolves to a function which,
+// when called, allows the next call to lock to proceed.
+// https://stackoverflow.com/a/51086893
+function Mutex() {
+    // Initially unlocked.
+    let p = Promise.resolve();
+    this.lock = function() {
+        let old_p = p;
+        let unlock;
+        // Make a new promise for the *next* caller to wait on. Copy the new
+        // promise's resolve function into the outer scope as "unlock".
+        p = new Promise(resolve => unlock = resolve);
+        // The caller gets a promise that allows them to unlock the *next*
+        // caller.
+        return old_p.then(() => unlock);
+    }
+}
+
+// Enforces exclusive access for onBeforeSendHeaders listeners.
+const headersMutex = new Mutex();
+
 async function roundtrip(request) {
     // Process the incoming request spec and convert it into parameters to the
     // fetch API. Also enforce some restrictions on what kinds of requests we
@@ -100,9 +121,8 @@ async function roundtrip(request) {
         }
         init.method = request.method;
 
-        if (request.header != null) {
-            init.headers = request.header;
-        }
+        // Don't set init.headers; that handled in the onBeforeSendHeaders
+        // listener.
 
         if (request.body != null && request.body !== "") {
             init.body = base64_decode(request.body);
@@ -115,21 +135,69 @@ async function roundtrip(request) {
         // Don't follow redirects (we'll get resp.status:0 if there is one).
         init.redirect = "manual";
 
-        // TODO: Host header
         // TODO: strip Origin header?
         // TODO: proxy
     } catch (error) {
         return {error: `request spec failed valiation: ${error.message}`};
     }
 
-    // Now actually do the request and build a response object.
+    // We need to use an onBeforeSendHeaders to override certain header fields,
+    // including Host (passing them to fetch in init.headers does not work). But
+    // onBeforeSendHeaders is a global setting (applies to all requests) and we
+    // need to be able to set different headers per request. We make it so that
+    // any onBeforeSendHeaders listener is only used for a single request, by
+    // acquiring a lock here and releasing it within the listener itself. The
+    // lock is acquired and released before any network communication happens;
+    // i.e., it's fast.
+    let headersUnlock = await headersMutex.lock();
+    let headersCalled = false;
+    function headersFn(details) {
+        try {
+            // Sanity assertion: any given listener is called at most once.
+            if (headersCalled) {
+                throw new Error("headersFn called more than once");
+            }
+            headersCalled = true;
+
+            // Convert request.header from object to array form.
+            // https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/webRequest/HttpHeaders
+            let headers = Object.entries(request.header != null ? request.header : {})
+                .map(x => ({name: x[0], value: x[1]}));
+            // Remove all browser headers that conflict with requested headers.
+            let overrides = Object.fromEntries(headers.map(x => [x.name.toLowerCase(), true]));
+            let browserHeaders = details.requestHeaders.filter(x => !(x.name.toLowerCase() in overrides));
+            return {requestHeaders: browserHeaders.concat(headers)};
+        } finally {
+            // Now that the listener has been called, remove it and release the
+            // lock to allow the next request to set different listener.
+            browser.webRequest.onBeforeSendHeaders.removeListener(headersFn);
+            headersUnlock();
+        }
+    };
+
     try {
+        // Set our listener that overrides the headers for this request.
+        // https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/webRequest/onBeforeSendHeaders
+        browser.webRequest.onBeforeSendHeaders.addListener(
+            headersFn,
+            {"urls": ["http://*/*", "https://*/*"]},
+            ["blocking", "requestHeaders"]
+        );
+
+        // Now actually do the request and build a response object.
         let resp = await fetch(url, init);
         let body = await resp.arrayBuffer();
         return {status: resp.status, body: base64_encode(body)};
     } catch (error) {
         // Convert any errors into an error response.
         return {error: error.message};
+    } finally {
+        // With certain errors (e.g. an invalid URL), the onBeforeSendHeaders
+        // listener may never get called, and therefore never release its lock.
+        // Ensure that locks are released and listeners removed in any case.
+        // It's safe to release a lock or remove a listener more than once.
+        browser.webRequest.onBeforeSendHeaders.removeListener(headersFn);
+        headersUnlock();
     }
 }
 

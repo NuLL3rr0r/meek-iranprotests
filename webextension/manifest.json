@@ -16,6 +16,8 @@
 
 	"permissions": [
 		"nativeMessaging",
+		"webRequest",
+		"webRequestBlocking",
 		"https://*/*",
 		"http://*/*"
 	]
