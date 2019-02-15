@@ -135,7 +135,6 @@ async function roundtrip(request) {
         // Don't follow redirects (we'll get resp.status:0 if there is one).
         init.redirect = "manual";
 
-        // TODO: strip Origin header?
         // TODO: proxy
     } catch (error) {
         return {error: `request spec failed valiation: ${error.message}`};
@@ -165,6 +164,10 @@ async function roundtrip(request) {
                 .map(x => ({name: x[0], value: x[1]}));
             // Remove all browser headers that conflict with requested headers.
             let overrides = Object.fromEntries(headers.map(x => [x.name.toLowerCase(), true]));
+            // Also remove some unnecessary or potentially tracking-enabling headers.
+            for (let name of ["Accept", "Accept-Language", "Cookie", "Origin", "User-Agent"]) {
+                overrides[name.toLowerCase()] = true;
+            }
             let browserHeaders = details.requestHeaders.filter(x => !(x.name.toLowerCase() in overrides));
             return {requestHeaders: browserHeaders.concat(headers)};
         } finally {
