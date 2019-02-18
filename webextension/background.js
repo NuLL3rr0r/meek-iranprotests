@@ -54,8 +54,6 @@
 // because that is what enables the native part to match up requests and
 // responses.
 
-let port = browser.runtime.connectNative("meek.http.helper");
-
 // Decode a base64-encoded string into an ArrayBuffer.
 function base64_decode(enc_str) {
     // First step is to decode the base64. atob returns a byte string; i.e., a
@@ -97,7 +95,7 @@ function Mutex() {
     }
 }
 
-// Enforces exclusive access for onBeforeSendHeaders listeners.
+// Enforces exclusive access to onBeforeSendHeaders listeners.
 const headersMutex = new Mutex();
 
 async function roundtrip(request) {
@@ -136,21 +134,22 @@ async function roundtrip(request) {
 
     // TODO: proxy
 
-    // We need to use an onBeforeSendHeaders to override certain header fields,
-    // including Host (passing them to fetch in init.headers does not work). But
-    // onBeforeSendHeaders is a global setting (applies to all requests) and we
-    // need to be able to set different headers per request. We make it so that
-    // any onBeforeSendHeaders listener is only used for a single request, by
-    // acquiring a lock here and releasing it within the listener itself. The
-    // lock is acquired and released before any network communication happens;
-    // i.e., it's fast.
+    // We need to use a webRequest.onBeforeSendHeaders listener to override
+    // certain header fields, including Host (passing them to fetch in
+    // init.headers does not work). But onBeforeSendHeaders is a global setting
+    // (applies to all requests) and we need to be able to set different headers
+    // per request. We make it so that any onBeforeSendHeaders listener is only
+    // used for a single request, by acquiring a lock here and releasing it
+    // within the listener itself. The lock is acquired and released before any
+    // network communication happens; i.e., it's fast.
     let headersUnlock = await headersMutex.lock();
     let headersCalled = false;
     function headersFn(details) {
         try {
-            // Sanity assertion: any given listener is called at most once.
+            // Sanity assertion: per-request listeners are called at most once.
             if (headersCalled) {
-                throw new Error("headersFn called more than once");
+                console.log("headersFn called more than once");
+                return {cancel: true};
             }
             headersCalled = true;
 
@@ -168,18 +167,18 @@ async function roundtrip(request) {
             return {requestHeaders: browserHeaders.concat(headers)};
         } finally {
             // Now that the listener has been called, remove it and release the
-            // lock to allow the next request to set different listener.
+            // lock to allow the next request to set a different listener.
             browser.webRequest.onBeforeSendHeaders.removeListener(headersFn);
             headersUnlock();
         }
-    };
+    }
 
     try {
         // Set our listener that overrides the headers for this request.
         // https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/webRequest/onBeforeSendHeaders
         browser.webRequest.onBeforeSendHeaders.addListener(
             headersFn,
-            {"urls": ["http://*/*", "https://*/*"]},
+            {urls: ["http://*/*", "https://*/*"]},
             ["blocking", "requestHeaders"]
         );
 
@@ -197,7 +196,10 @@ async function roundtrip(request) {
     }
 }
 
-port.onMessage.addListener((message) => {
+// Connect to our native process.
+let port = browser.runtime.connectNative("meek.http.helper");
+
+port.onMessage.addListener(message => {
     switch (message.command) {
         case "roundtrip":
             // Do a roundtrip and send the result back to the native process.
@@ -221,7 +223,7 @@ port.onMessage.addListener((message) => {
     }
 });
 
-port.onDisconnect.addListener((p) => {
+port.onDisconnect.addListener(p => {
     // https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/runtime/Port#Type
     // "Note that in Google Chrome port.error is not supported: instead, use
     // runtime.lastError to get the error message."
