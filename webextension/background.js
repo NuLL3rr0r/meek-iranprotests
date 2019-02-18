@@ -107,38 +107,34 @@ async function roundtrip(request) {
     // https://developer.mozilla.org/en-US/docs/Web/API/WindowOrWorkerGlobalScope/fetch#Parameters
     let url;
     let init = {};
-    try {
-        if (request.url == null) {
-            throw new Error("missing \"url\"");
-        }
-        if (!(request.url.startsWith("http://") || request.url.startsWith("https://"))) {
-            throw new Error("only http and https URLs are allowed");
-        }
-        url = request.url;
 
-        if (request.method !== "POST") {
-            throw new Error("only POST is allowed");
-        }
-        init.method = request.method;
-
-        // Don't set init.headers; that handled in the onBeforeSendHeaders
-        // listener.
-
-        if (request.body != null && request.body !== "") {
-            init.body = base64_decode(request.body);
-        }
-
-        // Do not read nor write from the browser's HTTP cache.
-        init.cache = "no-store";
-        // Don't send cookies.
-        init.credentials = "omit";
-        // Don't follow redirects (we'll get resp.status:0 if there is one).
-        init.redirect = "manual";
-
-        // TODO: proxy
-    } catch (error) {
-        return {error: `request spec failed valiation: ${error.message}`};
+    if (request.url == null) {
+        throw new Error("request spec failed validation: missing \"url\"");
     }
+    if (!(request.url.startsWith("http://") || request.url.startsWith("https://"))) {
+        throw new Error("request spec failed validation: only http and https URLs are allowed");
+    }
+    url = request.url;
+
+    if (request.method !== "POST") {
+        throw new Error("request spec failed validation: only POST is allowed");
+    }
+    init.method = request.method;
+
+    // Don't set init.headers; that is handled in the onBeforeSendHeaders listener.
+
+    if (request.body != null && request.body !== "") {
+        init.body = base64_decode(request.body);
+    }
+
+    // Do not read nor write from the browser's HTTP cache.
+    init.cache = "no-store";
+    // Don't send cookies.
+    init.credentials = "omit";
+    // Don't follow redirects (we'll get resp.status:0 if there is one).
+    init.redirect = "manual";
+
+    // TODO: proxy
 
     // We need to use an onBeforeSendHeaders to override certain header fields,
     // including Host (passing them to fetch in init.headers does not work). But
@@ -191,9 +187,6 @@ async function roundtrip(request) {
         let resp = await fetch(url, init);
         let body = await resp.arrayBuffer();
         return {status: resp.status, body: base64_encode(body)};
-    } catch (error) {
-        // Convert any errors into an error response.
-        return {error: error.message};
     } finally {
         // With certain errors (e.g. an invalid URL), the onBeforeSendHeaders
         // listener may never get called, and therefore never release its lock.
@@ -209,6 +202,8 @@ port.onMessage.addListener((message) => {
         case "roundtrip":
             // Do a roundtrip and send the result back to the native process.
             roundtrip(message.request)
+                // Convert any error into an "error" response.
+                .catch(error => ({error: error.message}))
                 .then(response => port.postMessage({id: message.id, response}));
             break;
         case "report-address":
