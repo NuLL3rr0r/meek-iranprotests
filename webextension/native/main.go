@@ -46,7 +46,7 @@ const (
 
 // We receive multiple (possibly concurrent) connections over our listening
 // socket, and we must multiplex all their requests/responses to/from the
-// browser over the single shared stdio stream. When handleConn sends a
+// browser over the single shared stdio stream. When roundTrip sends a
 // webExtensionRoundTripRequest to the browser, creates a channel to receive the
 // response, and stores the ID–channel mapping in requestResponseMap. When
 // inFromBrowserLoop receives a webExtensionRoundTripResponse from the browser,
@@ -189,30 +189,27 @@ func sendWebExtensionMessage(w io.Writer, message []byte) error {
 	return err
 }
 
-// Handle a socket connection, which is used for one request–response roundtrip
-// through the browser. We read a responseSpec from the socket and wrap it in a
-// webExtensionRoundTripRequest, tagging it with a random ID. We register the ID
-// in requestResponseMap and forward the webExtensionRoundTripRequest to the
-// browser. Then we wait for the browser to send back a
-// webExtensionRoundTripResponse, which actually happens in inFromBrowserLoop.
-// inFromBrowserLoop uses the ID to find this goroutine again.
-func handleConn(conn net.Conn, outToBrowserChan chan<- []byte) error {
-	defer conn.Close()
-
+// Read a responseSpec from the socket and wrap it in a
+// webExtensionRoundTripRequest, tagging it with a random ID. Register the ID in
+// requestResponseMap and forward the webExtensionRoundTripRequest to the
+// browser. Wait for the browser to send back a webExtensionRoundTripResponse
+// (which actually happens in inFromBrowserLoop--that function uses the ID to
+// find this goroutine again). Return a responseSpec object or an error.
+func roundTrip(conn net.Conn, outToBrowserChan chan<- []byte) (*responseSpec, error) {
 	err := conn.SetReadDeadline(time.Now().Add(localReadTimeout))
 	if err != nil {
-		return err
+		return nil, err
 	}
 	req, err := readRequestSpec(conn)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Generate an ID that will allow us to match a response to this request.
 	idRaw := make([]byte, 8)
 	_, err = rand.Read(idRaw)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	id := hex.EncodeToString(idRaw)
 
@@ -238,28 +235,41 @@ func handleConn(conn net.Conn, outToBrowserChan chan<- []byte) error {
 	// Now wait for the browser to send the response back to us.
 	// inFromBrowserLoop will find the proper channel by looking up the ID
 	// in requestResponseMap.
+	var resp *responseSpec
 	timeout := time.NewTimer(roundTripTimeout)
 	select {
-	case resp := <-responseSpecChan:
+	case resp = <-responseSpecChan:
 		timeout.Stop()
-		// Encode the response send it back out over the socket.
-		err = conn.SetWriteDeadline(time.Now().Add(localWriteTimeout))
-		if err != nil {
-			return err
-		}
-		err = writeResponseSpec(conn, resp)
-		if err != nil {
-			return err
-		}
 	case <-timeout.C:
 		// But don't wait forever, so as to allow reclaiming memory in
 		// case of a malfunction elsewhere.
 		requestResponseMapLock.Lock()
 		delete(requestResponseMap, id)
 		requestResponseMapLock.Unlock()
+		err = fmt.Errorf("timed out waiting for browser to reply")
+	}
+	return resp, err
+}
+
+// Handle a socket connection, which is used for one request–response roundtrip
+// through the browser. Delegates the real work to roundTrip, which reads the
+// requestSpec from the socket and sends it through the browser. Here, we wrap
+// any error from roundTrip in an "error" response and send the response back on
+// the socket.
+func handleConn(conn net.Conn, outToBrowserChan chan<- []byte) error {
+	defer conn.Close()
+
+	resp, err := roundTrip(conn, outToBrowserChan)
+	if err != nil {
+		resp = &responseSpec{Error: err.Error()}
 	}
 
-	return nil
+	// Encode the response send it back out over the socket.
+	err = conn.SetWriteDeadline(time.Now().Add(localWriteTimeout))
+	if err != nil {
+		return err
+	}
+	return writeResponseSpec(conn, resp)
 }
 
 // Receive socket connections and dispatch them to handleConn.
@@ -297,7 +307,7 @@ func inFromBrowserLoop() error {
 		}
 
 		// Look up what channel (previously registered in
-		// requestResponseMap by handleConn) should receive the
+		// requestResponseMap by roundTrip) should receive the
 		// response.
 		requestResponseMapLock.Lock()
 		responseSpecChan, ok := requestResponseMap[resp.ID]
@@ -306,7 +316,7 @@ func inFromBrowserLoop() error {
 
 		if !ok {
 			// Either the browser made up an ID that we never sent
-			// it, or (more likely) it took too long and handleConn
+			// it, or (more likely) it took too long and roundTrip
 			// stopped waiting. Just drop the response on the floor.
 			continue
 		}
