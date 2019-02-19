@@ -68,7 +68,7 @@ type requestSpec struct {
 type proxySpec struct {
 	Type string `json:"type"`
 	Host string `json:"host"`
-	Port string `json:"port"`
+	Port int    `json:"port"`
 }
 
 // A specification of an HTTP request or an error, as sent via the socket to

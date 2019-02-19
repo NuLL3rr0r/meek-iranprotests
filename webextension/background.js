@@ -77,6 +77,31 @@ function base64_encode(dec_buf) {
     return btoa(dec_str);
 }
 
+// Return a proxy.ProxyInfo according to the given specification.
+//
+// https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/proxy/ProxyInfo
+// The specification may look like:
+//   undefined
+//   {"type": "http", "host": "example.com", "port": 8080}
+//   {"type": "socks5", "host": "example.com", "port": 1080}
+//   {"type": "socks4a", "host": "example.com", "port": 1080}
+function makeProxyInfo(spec) {
+    if (spec == null) {
+        return {type: "direct"};
+    }
+    switch (spec.type) {
+        case "http":
+            return {type: "http", host: spec.host, port: spec.port};
+        // What tor calls "socks5", WebExtension calls "socks".
+        case "socks5":
+            return {type: "socks", host: spec.host, port: spec.port, proxyDNS: true};
+        // What tor calls "socks4a", WebExtension calls "socks4".
+        case "socks4a":
+            return {type: "socks4", host: spec.host, port: spec.port, proxyDNS: true};
+    };
+    throw new Error(`unknown proxy type ${spec.type}`);
+}
+
 // A Mutex's lock function returns a promise that resolves to a function which,
 // when called, allows the next call to lock to proceed.
 // https://stackoverflow.com/a/51086893
@@ -95,8 +120,9 @@ function Mutex() {
     }
 }
 
-// Enforces exclusive access to onBeforeSendHeaders listeners.
+// Enforce exclusive access to onBeforeSendHeaders and onRequest listeners.
 const headersMutex = new Mutex();
+const proxyMutex = new Mutex();
 
 async function roundtrip(request) {
     // Process the incoming request spec and convert it into parameters to the
@@ -131,8 +157,6 @@ async function roundtrip(request) {
     init.credentials = "omit";
     // Don't follow redirects (we'll get resp.status:0 if there is one).
     init.redirect = "manual";
-
-    // TODO: proxy
 
     // We need to use a webRequest.onBeforeSendHeaders listener to override
     // certain header fields, including Host (passing them to fetch in
@@ -173,6 +197,27 @@ async function roundtrip(request) {
         }
     }
 
+    // Similarly, for controlling the proxy for each request, we set a
+    // proxy.onRequest listener, use it for one request, then remove it.
+    let proxyUnlock = await proxyMutex.lock();
+    let proxyCalled = false;
+    // async to make exceptions visible to proxy.onError.
+    // https://bugzilla.mozilla.org/show_bug.cgi?id=1528873#c1
+    async function proxyFn(details) {
+        try {
+            // Sanity assertion: per-request listeners are called at most once.
+            if (proxyCalled) {
+                throw new Error("proxyFn called more than once");
+            }
+            proxyCalled = true;
+
+            return makeProxyInfo(request.proxy);
+        } finally {
+            browser.proxy.onRequest.removeListener(proxyFn);
+            proxyUnlock();
+        }
+    }
+
     try {
         // Set our listener that overrides the headers for this request.
         // https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/webRequest/onBeforeSendHeaders
@@ -181,18 +226,27 @@ async function roundtrip(request) {
             {urls: ["http://*/*", "https://*/*"]},
             ["blocking", "requestHeaders"]
         );
+        // Set our listener that overrides the proxy for this request.
+        // https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/proxy/onRequest
+        browser.proxy.onRequest.addListener(
+            proxyFn,
+            {urls: ["http://*/*", "https://*/*"]}
+        );
 
         // Now actually do the request and build a response object.
         let resp = await fetch(url, init);
         let body = await resp.arrayBuffer();
         return {status: resp.status, body: base64_encode(body)};
     } finally {
-        // With certain errors (e.g. an invalid URL), the onBeforeSendHeaders
-        // listener may never get called, and therefore never release its lock.
-        // Ensure that locks are released and listeners removed in any case.
-        // It's safe to release a lock or remove a listener more than once.
+        // With certain errors (e.g. an invalid URL), our onBeforeSendHeaders
+        // and onRequest listeners may never get called, and therefore never
+        // release their locks. Ensure that locks are released and listeners
+        // removed in any case. It's safe to release a lock or remove a listener
+        // more than once.
         browser.webRequest.onBeforeSendHeaders.removeListener(headersFn);
         headersUnlock();
+        browser.proxy.onRequest.removeListener(proxyFn);
+        proxyUnlock();
     }
 }
 
