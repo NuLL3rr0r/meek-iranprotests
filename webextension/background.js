@@ -250,6 +250,30 @@ async function roundtrip(request) {
     }
 }
 
+// If an error occurs in a proxy.onRequest listener (for instance if a ProxyInfo
+// field is missing or invalid), the browser will ignore the proxy and just
+// connect directly. It will, however, call proxy.onError listeners. Register a
+// static proxy.onError listener that sets a global flag if an error ever
+// occurs; and a static browser.onBeforeRequest listener which checks the flag
+// and cancels every request if it is set. We could be less severe here (we
+// probably only need to cancel the *next* request that occurs after a proxy
+// error), but this setup is meant to be a fail-closed safety net for what is
+// essentially a "can't happen" state under correct configuration. Note that
+// proxy.onError doesn't get called for transient errors like a failure to
+// connect to the proxy, only for nonsensical ProxyInfo configurations.
+// https://bugzilla.mozilla.org/show_bug.cgi?id=1528873
+// https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/proxy/onError
+let proxyError = null;
+browser.proxy.onError.addListener(error => {
+    console.log(`proxy error, disabling: ${error.message}`);
+    proxyError = error;
+});
+browser.webRequest.onBeforeRequest.addListener(
+    details => ({cancel: proxyError != null}),
+    {urls: ["http://*/*", "https://*/*"]},
+    ["blocking"]
+);
+
 // Connect to our native process.
 let port = browser.runtime.connectNative("meek.http.helper");
 
