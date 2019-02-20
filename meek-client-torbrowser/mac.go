@@ -5,7 +5,11 @@
 
 package main
 
-import "os/exec"
+import (
+	"os"
+	"os/exec"
+	"path/filepath"
+)
 
 const (
 	// During startup of meek-client-torbrowser, the browser profile is
@@ -20,8 +24,21 @@ const (
 	torDataDirFirefoxProfilePath = "PluggableTransports/profile.meek-http-helper"
 	firefoxProfilePath           = "../../../../TorBrowser-Data/Tor/PluggableTransports/profile.meek-http-helper"
 	profileTemplatePath          = "../../Resources/TorBrowser/Tor/PluggableTransports/template-profile.meek-http-helper"
+	helperNativeExecutablePath   = "../Tor/PluggableTransports/meek-http-helper"
 )
 
 func osSpecificCommandSetup(cmd *exec.Cmd) {
 	// nothing
+}
+
+func installHelperNativeManifest() error {
+	var homeDir string
+	torDataDir := os.Getenv("TOR_BROWSER_TOR_DATA_DIR")
+	if torDataDir != "" {
+		homeDir = filepath.Join(torDataDir, "..", "Browser")
+	} else {
+		homeDir = "../../../../TorBrowser-Data/Browser"
+	}
+	// https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/Native_manifests#Mac_OS_X
+	return writeNativeManifestToFile(filepath.Join(homeDir, "Mozilla", "NativeMessagingHosts"), helperNativeExecutablePath)
 }

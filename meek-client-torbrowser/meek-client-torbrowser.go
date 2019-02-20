@@ -242,6 +242,14 @@ func runFirefox() (cmd *exec.Cmd, stdout io.Reader, err error) {
 		return
 	}
 
+	// Install the meek.http.helper.json file that tells the browser where
+	// to find the native component of the meek-http-helper WebExtension.
+	// https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/Native_manifests
+	err = installHelperNativeManifest()
+	if err != nil {
+		return
+	}
+
 	cmd = exec.Command(absFirefoxPath, "--headless", "--no-remote", "--profile", profilePath)
 	osSpecificCommandSetup(cmd)
 	cmd.Stderr = os.Stderr
