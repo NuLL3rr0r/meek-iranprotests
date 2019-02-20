@@ -197,7 +197,7 @@ func isBrowserProfileUpToDate(templatePath string, profilePath string) bool {
 func runFirefox() (cmd *exec.Cmd, stdout io.Reader, err error) {
 	// Unset environment variables that Firefox sets after a restart (as
 	// caused by, for example, an update or the installation of an add-on).
-	// XRE_PROFILE_PATH, in particular, overrides the -profile option that
+	// XRE_PROFILE_PATH, in particular, overrides the --profile option that
 	// runFirefox sets, causing Firefox to run with profile.default instead
 	// of profile.meek-http-helper, which conflicts with the profile.default
 	// that is already running. See https://bugs.torproject.org/13247,
@@ -242,7 +242,7 @@ func runFirefox() (cmd *exec.Cmd, stdout io.Reader, err error) {
 		return
 	}
 
-	cmd = exec.Command(absFirefoxPath, "--invisible", "-no-remote", "-profile", profilePath)
+	cmd = exec.Command(absFirefoxPath, "--headless", "--no-remote", "--profile", profilePath)
 	osSpecificCommandSetup(cmd)
 	cmd.Stderr = os.Stderr
 	stdout, err = cmd.StdoutPipe()
