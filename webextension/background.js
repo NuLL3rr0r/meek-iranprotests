@@ -277,6 +277,22 @@ browser.webRequest.onBeforeRequest.addListener(
     ["blocking"]
 );
 
+// Allow unproxied DNS, working around a Tor Browser patch: https://bugs.torproject.org/11183#comment:6.
+// We manually override the proxy for every request, and in makeProxyInfo we set
+// proxyDNS:true wherever necessary, so name resolution uses the proxy despite
+// this pref.
+//
+// In Tor Browser, the pref changes here are only temporary. The
+// meek-http-helper profile has a user.js file that sets a default blackhole
+// proxy, as a safety feature in case something goes wrong running the headless
+// browser.
+//
+// We only care to set proxyDNS here, but must additionally set proxyType until
+// Firefox 63 because of a bug.
+// https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/proxy/settings
+// https://bugzilla.mozilla.org/show_bug.cgi?id=1487121
+browser.proxy.settings.set({value: {proxyType: "system", proxyDNS: false}});
+
 // Connect to our native process.
 let port = browser.runtime.connectNative("meek.http.helper");
 
