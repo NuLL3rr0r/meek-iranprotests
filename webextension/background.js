@@ -277,6 +277,12 @@ browser.webRequest.onBeforeRequest.addListener(
     ["blocking"]
 );
 
+// Set a top-level error logger for webRequest, to aid debugging.
+browser.webRequest.onErrorOccurred.addListener(
+    details => console.log(`${browser.runtime.id}: webRequest error:`, details),
+    {urls: ["http://*/*", "https://*/*"]}
+);
+
 // Allow unproxied DNS, working around a Tor Browser patch: https://bugs.torproject.org/11183#comment:6.
 // We manually override the proxy for every request, and in makeProxyInfo we set
 // proxyDNS:true wherever necessary, so name resolution uses the proxy despite
