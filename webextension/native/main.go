@@ -138,8 +138,11 @@ func writeResponseSpec(w io.Writer, spec *responseSpec) error {
 		panic(err)
 	}
 
+	// len returns int, which is specified to be either 32 or 64 bits, so it
+	// will never be truncated when converting to uint64.
+	// https://golang.org/ref/spec#Numeric_types
 	length := len(encodedSpec)
-	if length > math.MaxUint32 {
+	if uint64(length) > math.MaxUint32 {
 		return fmt.Errorf("response spec is too long to represent: %d", length)
 	}
 	err = binary.Write(w, binary.BigEndian, uint32(length))
@@ -177,8 +180,11 @@ func recvWebExtensionMessage(r io.Reader) ([]byte, error) {
 // Send a WebExtension message.
 // https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/Native_messaging#App_side
 func sendWebExtensionMessage(w io.Writer, message []byte) error {
+	// len returns int, which is specified to be either 32 or 64 bits, so it
+	// will never be truncated when converting to uint64.
+	// https://golang.org/ref/spec#Numeric_types
 	length := len(message)
-	if length > math.MaxUint32 {
+	if uint64(length) > math.MaxUint32 {
 		return fmt.Errorf("WebExtension message is too long to represent: %d", length)
 	}
 	err := binary.Write(w, NativeEndian, uint32(length))
