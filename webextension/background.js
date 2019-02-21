@@ -182,7 +182,10 @@ async function roundtrip(request) {
             let headers = Object.entries(request.header != null ? request.header : {})
                 .map(x => ({name: x[0], value: x[1]}));
             // Remove all browser headers that conflict with requested headers.
-            let overrides = Object.fromEntries(headers.map(x => [x.name.toLowerCase(), true]));
+            let overrides = {};
+            for (let name of Object.keys(headers)) {
+                overrides[name.toLowerCase()] = true;
+            }
             // Also remove some unnecessary or potentially tracking-enabling headers.
             for (let name of ["Accept", "Accept-Language", "Cookie", "Origin", "User-Agent"]) {
                 overrides[name.toLowerCase()] = true;
