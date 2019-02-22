@@ -203,6 +203,30 @@ func isBrowserProfileUpToDate(templatePath string, profilePath string) bool {
 // the path to the Firefox profile to use. Otherwise, the profile is chosen in a
 // platform-specific way (see linux.go, mac.go, windows.go).
 func runFirefox() (cmd *exec.Cmd, stdout io.Reader, err error) {
+	// Unset environment variables that Firefox sets after a restart (as
+	// caused by, for example, an update or the installation of an add-on).
+	// XRE_PROFILE_PATH, in particular, overrides the -profile option that
+	// runFirefox sets, causing Firefox to run with profile.default instead
+	// of profile.meek-http-helper, which conflicts with the profile.default
+	// that is already running. See https://bugs.torproject.org/13247,
+	// particularly #comment:17 and #comment:18. The environment variable
+	// names come from
+	// https://hg.mozilla.org/mozilla-central/file/cfde3603b020/toolkit/xre/nsAppRunner.cpp#l3941
+	for _, varname := range []string{
+		"XRE_PROFILE_PATH",
+		"XRE_PROFILE_LOCAL_PATH",
+		"XRE_PROFILE_NAME",
+		"XRE_START_OFFLINE",
+		"NO_EM_RESTART",
+		"XUL_APP_FILE",
+		"XRE_BINARY_PATH",
+	} {
+		err = os.Unsetenv(varname)
+		if err != nil {
+			return
+		}
+	}
+
 	// Mac OS X needs absolute paths for firefox and for the profile.
 	var absFirefoxPath string
 	absFirefoxPath, err = filepath.Abs(firefoxPath)
@@ -327,29 +351,14 @@ func main() {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGTERM)
 
-	// Unset environment variables that Firefox sets after a restart (as
-	// caused by, for example, an update or the installation of an add-on).
-	// XRE_PROFILE_PATH, in particular, overrides the -profile option that
-	// runFirefox sets, causing Firefox to run with profile.default instead
-	// of profile.meek-http-helper, which conflicts with the profile.default
-	// that is already running. See https://bugs.torproject.org/13247,
-	// particularly #comment:17 and #comment:18. The environment variable
-	// names come from
-	// https://hg.mozilla.org/mozilla-central/file/cfde3603b020/toolkit/xre/nsAppRunner.cpp#l3941
-	var firefoxRestartEnvVars = []string{
-		"XRE_PROFILE_PATH",
-		"XRE_PROFILE_LOCAL_PATH",
-		"XRE_PROFILE_NAME",
-		"XRE_START_OFFLINE",
-		"NO_EM_RESTART",
-		"XUL_APP_FILE",
-		"XRE_BINARY_PATH",
-	}
-	for _, varname := range firefoxRestartEnvVars {
-		err := os.Unsetenv(varname)
-		if err != nil {
-			log.Fatal(err)
-		}
+	if os.Getenv("TOR_PT_EXIT_ON_STDIN_CLOSE") == "1" {
+		// This environment variable means we should treat EOF on stdin
+		// just like SIGTERM: https://bugs.torproject.org/15435.
+		go func() {
+			io.Copy(ioutil.Discard, os.Stdin)
+			log.Print("synthesizing SIGTERM because of stdin close")
+			sigChan <- syscall.SIGTERM
+		}()
 	}
 
 	// Start firefox.
@@ -374,16 +383,6 @@ func main() {
 		return
 	}
 	defer logKill(meekClientCmd.Process)
-
-	if os.Getenv("TOR_PT_EXIT_ON_STDIN_CLOSE") == "1" {
-		// This environment variable means we should treat EOF on stdin
-		// just like SIGTERM: https://bugs.torproject.org/15435.
-		go func() {
-			io.Copy(ioutil.Discard, os.Stdin)
-			log.Printf("synthesizing SIGTERM because of stdin close")
-			sigChan <- syscall.SIGTERM
-		}()
-	}
 
 	sig := <-sigChan
 	log.Printf("sig %s", sig)
