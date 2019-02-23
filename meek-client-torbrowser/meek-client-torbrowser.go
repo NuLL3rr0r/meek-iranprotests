@@ -370,10 +370,25 @@ func main() {
 	defer logKill(firefoxCmd.Process)
 
 	// Find out the helper's listening address.
-	helperAddr, err := grepHelperAddr(stdout)
-	if err != nil {
+	addrChan := make(chan string)
+	errChan := make(chan error)
+	go func() {
+		addr, err := grepHelperAddr(stdout)
+		if err == nil {
+			addrChan <- addr
+		} else {
+			errChan <- err
+		}
+	}()
+	var helperAddr string
+	select {
+	case sig := <-sigChan:
+		log.Printf("sig %s", sig)
+		return
+	case err = <-errChan:
 		log.Print(err)
 		return
+	case helperAddr = <-addrChan:
 	}
 
 	// Start meek-client with the helper address.
