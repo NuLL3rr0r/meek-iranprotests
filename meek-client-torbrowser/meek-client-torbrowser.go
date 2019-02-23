@@ -35,14 +35,25 @@ import (
 	"regexp"
 	"strings"
 	"syscall"
+	"time"
 )
 
 // This magic string is emitted by meek-http-helper.
 var helperAddrPattern = regexp.MustCompile(`^meek-http-helper: listen (127\.0\.0\.1:\d+)$`)
 
+// How long to wait for child processes to exit gracefully before killing them.
+const terminateTimeout = 2 * time.Second
+
 func usage() {
 	fmt.Fprintf(os.Stderr, "Usage: %s [meek-client-torbrowser args] -- meek-client [meek-client args]\n", os.Args[0])
 	flag.PrintDefaults()
+}
+
+// ptCmd is a *exec.Cmd augmented with an io.WriteCloser for its stdin, which we
+// can close to instruct the PT subprocess to terminate.
+type ptCmd struct {
+	*exec.Cmd
+	StdinCloser io.WriteCloser
 }
 
 // Log a call to os.Process.Kill.
@@ -293,14 +304,16 @@ func grepHelperAddr(r io.Reader) (string, error) {
 }
 
 // Run meek-client and return its exec.Cmd.
-func runMeekClient(helperAddr string, meekClientCommandLine []string) (cmd *exec.Cmd, err error) {
+func runMeekClient(helperAddr string, meekClientCommandLine []string) (cmd *ptCmd, err error) {
 	meekClientPath := meekClientCommandLine[0]
 	args := meekClientCommandLine[1:]
 	args = append(args, []string{"--helper", helperAddr}...)
-	cmd = exec.Command(meekClientPath, args...)
+	cmd = new(ptCmd)
+	cmd.Cmd = exec.Command(meekClientPath, args...)
 	// Give the subprocess a stdin for TOR_PT_EXIT_ON_STDIN_CLOSE purposes.
 	// https://bugs.torproject.org/24642
-	_, err = cmd.StdinPipe()
+	cmd.Env = append(os.Environ(), "TOR_PT_EXIT_ON_STDIN_CLOSE=1")
+	cmd.StdinCloser, err = cmd.StdinPipe()
 	if err != nil {
 		return
 	}
@@ -320,7 +333,7 @@ func runMeekClient(helperAddr string, meekClientCommandLine []string) (cmd *exec
 // may have failed to start. If a process did not start, its corresponding
 // return value will be nil. The caller is responsible for terminating whatever
 // processes were started, whether or not err is nil.
-func startProcesses(sigChan <-chan os.Signal, meekClientCommandLine []string) (firefoxCmd *exec.Cmd, meekClientCmd *exec.Cmd, err error) {
+func startProcesses(sigChan <-chan os.Signal, meekClientCommandLine []string) (firefoxCmd *exec.Cmd, meekClientCmd *ptCmd, err error) {
 	// Start firefox.
 	var stdout io.Reader
 	firefoxCmd, stdout, err = runFirefox()
@@ -414,7 +427,6 @@ func main() {
 		// we are instructed to stop.
 		sig := <-sigChan
 		log.Printf("sig %s", sig)
-		logSignal(meekClientCmd.Process, sig)
 	} else {
 		// Otherwise don't wait, go ahead and terminate whatever
 		// processes were started.
@@ -425,6 +437,9 @@ func main() {
 		logKill(firefoxCmd.Process)
 	}
 	if meekClientCmd != nil {
-		logKill(firefoxCmd.Process)
+		err := terminatePTCmd(meekClientCmd)
+		if err != nil {
+			log.Printf("error terminating meek-client: %v", err)
+		}
 	}
 }
