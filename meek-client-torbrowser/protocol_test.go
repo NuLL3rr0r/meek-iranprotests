@@ -9,6 +9,7 @@ import (
 )
 
 const timeout = 50 * time.Millisecond
+
 var errTimedout = errors.New("timed out")
 
 type infiniteReader struct{}
@@ -22,14 +23,14 @@ func (r *infiniteReader) Read(p []byte) (int, error) {
 
 func grepHelperAddrTimeout(r io.Reader) (string, error) {
 	type result struct {
-		s string
+		s   string
 		err error
 	}
 	ch := make(chan result)
 	go func() {
 		s, err := grepHelperAddr(r)
-		ch <- result {
-			s: s,
+		ch <- result{
+			s:   s,
 			err: err,
 		}
 	}()
@@ -69,7 +70,7 @@ func TestGrepHelperAddr(t *testing.T) {
 	// good tests
 	for _, test := range []string{
 		"meek-http-helper: listen " + expectedAddr,
-		"meek-http-helper: listen " + expectedAddr+ "\njunk",
+		"meek-http-helper: listen " + expectedAddr + "\njunk",
 		"junk\nmeek-http-helper: listen " + expectedAddr + "\njunk",
 		"meek-http-helper: listen " + expectedAddr + "\nmeek-http-helper: listen 1.2.3.4:9999\n",
 	} {
