@@ -53,13 +53,13 @@ func TestGrepHelperAddr(t *testing.T) {
 		"meek-http-helper: listen " + expectedAddr + " \n",
 		"meek-http-helper: listen " + expectedAddr + "abc\n",
 	} {
-		b := bytes.NewBufferString(test)
+		b := bytes.NewReader([]byte(test))
 		s, err := grepHelperAddrTimeout(b)
 		if err != io.EOF {
 			t.Errorf("%q → (%q, %v), should have been %v", test, s, err, io.EOF)
 		}
 		// test again with an endless reader
-		b = bytes.NewBufferString(test)
+		b = bytes.NewReader([]byte(test))
 		s, err = grepHelperAddrTimeout(io.MultiReader(b, &infiniteReader{}))
 		if err != errTimedout {
 			t.Errorf("%q → (%q, %v), should have been %v", test, s, err, errTimedout)
@@ -73,13 +73,13 @@ func TestGrepHelperAddr(t *testing.T) {
 		"junk\nmeek-http-helper: listen " + expectedAddr + "\njunk",
 		"meek-http-helper: listen " + expectedAddr + "\nmeek-http-helper: listen 1.2.3.4:9999\n",
 	} {
-		b := bytes.NewBufferString(test)
+		b := bytes.NewReader([]byte(test))
 		s, err := grepHelperAddrTimeout(b)
 		if err != nil || s != expectedAddr {
 			t.Errorf("%q → (%q, %v), should have been %q", test, s, err, expectedAddr)
 		}
 		// test again with an endless reader
-		b = bytes.NewBufferString(test)
+		b = bytes.NewReader([]byte(test))
 		s, err = grepHelperAddrTimeout(io.MultiReader(b, &infiniteReader{}))
 		if err != nil || s != expectedAddr {
 			t.Errorf("%q → (%q, %v), should have been %q", test, s, err, expectedAddr)
