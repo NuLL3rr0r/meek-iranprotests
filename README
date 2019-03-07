@@ -45,7 +45,9 @@ Reflector web app that runs on Google App Engine. The reflector simply
 copies requests and responses to an instance of meek-server somewhere.
 
 firefox:
-Browser extension for TLS camouflage.
+Browser extension for TLS camouflage. Only works with versions of
+Firefox below 60.0. Use the extension in the webextension for newer
+versions of Firefox.
 
 meek-client:
 The client transport plugin, run by a censored client.
@@ -69,6 +71,9 @@ https://meek-reflect.herokuapp.com/.
 terminateprocess-buffer:
 An auxiliary program used on Windows to assist with cleanup of
 subprocesses.
+
+webextension:
+Browser extension for TLS camouflage.
 
 wsgi:
 A WSGI Python reflector.
