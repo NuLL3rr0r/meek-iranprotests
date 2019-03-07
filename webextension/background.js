@@ -206,6 +206,7 @@ async function roundtrip(request) {
     let proxyCalled = false;
     // async to make exceptions visible to proxy.onError.
     // https://bugzilla.mozilla.org/show_bug.cgi?id=1528873#c1
+    // https://bugzilla.mozilla.org/show_bug.cgi?id=1533505
     async function proxyFn(details) {
         try {
             // Sanity assertion: per-request listeners are called at most once.
@@ -264,7 +265,7 @@ async function roundtrip(request) {
 // essentially a "can't happen" state under correct configuration. Note that
 // proxy.onError doesn't get called for transient errors like a failure to
 // connect to the proxy, only for nonsensical ProxyInfo configurations.
-// https://bugzilla.mozilla.org/show_bug.cgi?id=1528873
+// https://bugzilla.mozilla.org/show_bug.cgi?id=1533509
 // https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/proxy/onError
 let proxyError = null;
 browser.proxy.onError.addListener(error => {
