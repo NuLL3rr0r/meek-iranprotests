@@ -12,18 +12,18 @@ These instructions require Firefox 65.
 1. Compile the native application.
        cd native && go build
 
-2. Edit meek.http.helper.json and set the "path" field to the path to
-   the native application.
+2. Edit native/meek.http.helper.json and set the "path" field to the
+   path to the native application.
        "path": "/where/you/installed/native",
 
-3. Copy the edited meek.http.helper.json file to the OS-appropriate
-   location.
+3. Copy the edited native/meek.http.helper.json file to the
+   OS-appropriate location.
        # macOS
        mkdir -p ~/"Library/Application Support/Mozilla/NativeMessagingHosts/"
-       cp meek.http.helper.json ~/"Library/Application Support/Mozilla/NativeMessagingHosts/"
+       cp native/meek.http.helper.json ~/"Library/Application Support/Mozilla/NativeMessagingHosts/"
        # other Unix
        mkdir -p ~/.mozilla/native-messaging-hosts/
-       cp meek.http.helper.json ~/.mozilla/native-messaging-hosts/
+       cp native/meek.http.helper.json ~/.mozilla/native-messaging-hosts/
    The meek.http.helper.json file is called the "host manifest" or "app
    manifest" and it tells the browser where to find the native part of
    the WebExtension. More information:
@@ -35,7 +35,7 @@ These instructions require Firefox 65.
    This enables the extension to write to stdout.
 
 5. In Firefox, go to about:debugging and click "Load Temporary
-   Add-on...". Find manifest.json and click Open.
+   Add-on...". Find browser/manifest.json and click Open.
    More information:
        https://developer.mozilla.org/en-US/docs/Tools/about:debugging#Loading_a_temporary_add-on
    In the terminal, you should see a line like this, with a random port
