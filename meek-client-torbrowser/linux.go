@@ -29,3 +29,9 @@ func osSpecificCommandSetup(cmd *exec.Cmd) {
 func installHelperNativeManifest() error {
 	return writeNativeManifestToFile(helperNativeManifestDir, helperNativeExecutablePath)
 }
+
+func uninstallHelperNativeManifest() error {
+	// Nothing to do here: the host manifest file is written inside the
+	// browser directory, so we assume we don't have to clean it up.
+	return nil
+}

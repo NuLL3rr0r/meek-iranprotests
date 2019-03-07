@@ -42,3 +42,9 @@ func installHelperNativeManifest() error {
 	// https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/Native_manifests#Mac_OS_X
 	return writeNativeManifestToFile(filepath.Join(homeDir, "Mozilla", "NativeMessagingHosts"), helperNativeExecutablePath)
 }
+
+func uninstallHelperNativeManifest() error {
+	// Nothing to do here: the host manifest file is written inside the
+	// browser directory, so we assume we don't have to clean it up.
+	return nil
+}

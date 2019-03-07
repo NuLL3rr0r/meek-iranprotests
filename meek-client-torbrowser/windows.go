@@ -22,6 +22,7 @@ const (
 	// https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/Native_manifests#Windows
 	helperNativeManifestDir    = "TorBrowser/Data/Browser/.mozilla/native-messaging-hosts"
 	helperNativeExecutablePath = "TorBrowser/Tor/PluggableTransports/meek-http-helper.exe"
+	registryKey                = `SOFTWARE\Mozilla\NativeMessagingHosts\` + nativeAppName
 )
 
 func osSpecificCommandSetup(cmd *exec.Cmd) {
@@ -39,16 +40,21 @@ func installHelperNativeManifest() error {
 		return err
 	}
 
-	// TODO: Find a way to do this without having to write to the registry.
-	// https://bugs.torproject.org/29347#comment:9
+	// On Windows we must set a registry key pointing to the host manifest.
+	// We'll attempt to delete the key in uninstallHelperNativeManifest.
 	// https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/Native_manifests#Windows
-	k, _, err := registry.CreateKey(
-		registry.CURRENT_USER,
-		`SOFTWARE\Mozilla\NativeMessagingHosts\`+nativeAppName,
-		registry.WRITE,
-	)
+	k, _, err := registry.CreateKey(registry.CURRENT_USER, registryKey, registry.WRITE)
 	if err != nil {
 		return err
 	}
 	return k.SetStringValue("", absManifestPath)
+}
+
+func uninstallHelperNativeManifest() error {
+	// Delete the registry key pointing to the host manifest. We don't
+	// delete any higher up the tree; e.g. an empty
+	// HKEY_CURRENT_USER\SOFTWARE\Mozilla\NativeMessagingHosts will remain
+	// even if it was not present before installHelperNativeManifest was
+	// called.
+	return registry.DeleteKey(registry.CURRENT_USER, registryKey)
 }

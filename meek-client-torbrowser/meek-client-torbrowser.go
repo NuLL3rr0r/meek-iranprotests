@@ -15,6 +15,11 @@
 // executed as given, except that a --helper option is added that points to the
 // port number read from firefox.
 //
+// On Windows, this program assumes that it has exclusive control over the
+// HKEY_CURRENT_USER\SOFTWARE\Mozilla\NativeMessagingHosts\meek.http.helper
+// registry key. It creates the key when run and tries to delete it when
+// exiting.
+//
 // This program proxies stdin and stdout to and from meek-client, so it is
 // actually meek-client that drives the pluggable transport negotiation with
 // tor.
@@ -420,6 +425,14 @@ func main() {
 		// Otherwise don't wait, go ahead and terminate whatever
 		// processes were started.
 		log.Print(err)
+	}
+
+	// Make a best-effort attempt to remove the registry key that points to
+	// the meek.http.helper.json file on Windows, because the registry is
+	// persistent global state.
+	err = uninstallHelperNativeManifest()
+	if err != nil {
+		log.Printf("uninstalling native host manifest: %v", err)
 	}
 
 	var wg sync.WaitGroup
