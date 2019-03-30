@@ -168,8 +168,7 @@ async function roundtrip(params) {
         try {
             // Sanity assertion: per-request listeners are called at most once.
             if (headersCalled) {
-                console.log("headersFn called more than once");
-                return {cancel: true};
+                throw new Error("headersFn called more than once");
             }
             headersCalled = true;
 
