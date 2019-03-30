@@ -36,7 +36,7 @@ const (
 	roundTripTimeout = 120 * time.Second
 
 	// Self-defense against a malfunctioning meek-client. We'll refuse to
-	// read encoded responses that are longer than this.
+	// read encoded requests that are longer than this.
 	maxRequestSpecLength = 1000000
 
 	// Self-defense against a malfunctioning browser. We'll refuse to
@@ -52,32 +52,16 @@ const (
 // inFromBrowserLoop receives a webExtensionRoundTripResponse from the browser,
 // it is tagged with the same ID as the corresponding request. inFromBrowserLoop
 // looks up the matching channel and sends the response over it.
-var requestResponseMap = make(map[string]chan<- *responseSpec)
+var requestResponseMap = make(map[string]chan<- responseSpec)
 var requestResponseMapLock sync.Mutex
 
 // A specification of an HTTP request, as received via the socket from
 // "meek-client --helper".
-type requestSpec struct {
-	Method string            `json:"method,omitempty"`
-	URL    string            `json:"url,omitempty"`
-	Header map[string]string `json:"header,omitempty"`
-	Body   []byte            `json:"body,omitempty"`
-	Proxy  *proxySpec        `json:"proxy,omitempty"`
-}
-
-type proxySpec struct {
-	Type string `json:"type"`
-	Host string `json:"host"`
-	Port int    `json:"port"`
-}
+type requestSpec interface{}
 
 // A specification of an HTTP request or an error, as sent via the socket to
 // "meek-client --helper".
-type responseSpec struct {
-	Error  string `json:"error,omitempty"`
-	Status int    `json:"status,omitempty"`
-	Body   []byte `json:"body,omitempty"`
-}
+type responseSpec interface{}
 
 // A "roundtrip" command sent out to the browser over the stdout stream. It
 // encapsulates a requestSpec as received from the socket, plus
@@ -87,17 +71,17 @@ type responseSpec struct {
 // command:"roundtrip" is to disambiguate with the other command we may send,
 // "report-address".
 type webExtensionRoundTripRequest struct {
-	Command string       `json:"command"` // "roundtrip"
-	ID      string       `json:"id"`
-	Request *requestSpec `json:"request"`
+	Command string      `json:"command"` // "roundtrip"
+	ID      string      `json:"id"`
+	Request requestSpec `json:"request"`
 }
 
 // A message received from the the browser over the stdin stream. It
 // encapsulates a responseSpec along with the ID of the webExtensionResponse
 // that resulted in this response.
 type webExtensionRoundTripResponse struct {
-	ID       string        `json:"id"`
-	Response *responseSpec `json:"response"`
+	ID       string       `json:"id"`
+	Response responseSpec `json:"response"`
 }
 
 // Read a requestSpec (receive from "meek-client --helper").
@@ -106,7 +90,7 @@ type webExtensionRoundTripResponse struct {
 // protocol: a 4-byte length, followed by a JSON object of that length. The only
 // difference is the byte order of the length: meek-client's is big-endian,
 // while WebExtension's is native-endian.
-func readRequestSpec(r io.Reader) (*requestSpec, error) {
+func readRequestSpec(r io.Reader) (requestSpec, error) {
 	var length uint32
 	err := binary.Read(r, binary.BigEndian, &length)
 	if err != nil {
@@ -132,7 +116,7 @@ func readRequestSpec(r io.Reader) (*requestSpec, error) {
 }
 
 // Write a responseSpec (send to "meek-client --helper").
-func writeResponseSpec(w io.Writer, spec *responseSpec) error {
+func writeResponseSpec(w io.Writer, spec responseSpec) error {
 	encodedSpec, err := json.Marshal(spec)
 	if err != nil {
 		panic(err)
@@ -151,11 +135,7 @@ func writeResponseSpec(w io.Writer, spec *responseSpec) error {
 	}
 
 	_, err = w.Write(encodedSpec)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 // Receive a WebExtension message.
@@ -201,7 +181,7 @@ func sendWebExtensionMessage(w io.Writer, message []byte) error {
 // browser. Wait for the browser to send back a webExtensionRoundTripResponse
 // (which actually happens in inFromBrowserLoop--that function uses the ID to
 // find this goroutine again). Return a responseSpec object or an error.
-func roundTrip(conn net.Conn, outToBrowserChan chan<- []byte) (*responseSpec, error) {
+func roundTrip(conn net.Conn, outToBrowserChan chan<- []byte) (responseSpec, error) {
 	err := conn.SetReadDeadline(time.Now().Add(localReadTimeout))
 	if err != nil {
 		return nil, err
@@ -222,7 +202,7 @@ func roundTrip(conn net.Conn, outToBrowserChan chan<- []byte) (*responseSpec, er
 	// This is the channel over which inFromBrowserLoop will send the
 	// response. Register it in requestResponseMap to enable
 	// inFromBrowserLoop to match the corresponding response to it.
-	responseSpecChan := make(chan *responseSpec)
+	responseSpecChan := make(chan responseSpec)
 	requestResponseMapLock.Lock()
 	requestResponseMap[id] = responseSpecChan
 	requestResponseMapLock.Unlock()
@@ -241,7 +221,7 @@ func roundTrip(conn net.Conn, outToBrowserChan chan<- []byte) (*responseSpec, er
 	// Now wait for the browser to send the response back to us.
 	// inFromBrowserLoop will find the proper channel by looking up the ID
 	// in requestResponseMap.
-	var resp *responseSpec
+	var resp responseSpec
 	timeout := time.NewTimer(roundTripTimeout)
 	select {
 	case resp = <-responseSpecChan:
@@ -257,6 +237,12 @@ func roundTrip(conn net.Conn, outToBrowserChan chan<- []byte) (*responseSpec, er
 	return resp, err
 }
 
+// This is a responseSpec for errors that originate inside this program, as
+// opposed to being relayed from the browser.
+type errorResponseSpec struct {
+	Error string `json:"error"`
+}
+
 // Handle a socket connection, which is used for one request–response roundtrip
 // through the browser. Delegates the real work to roundTrip, which reads the
 // requestSpec from the socket and sends it through the browser. Here, we wrap
@@ -267,7 +253,7 @@ func handleConn(conn net.Conn, outToBrowserChan chan<- []byte) error {
 
 	resp, err := roundTrip(conn, outToBrowserChan)
 	if err != nil {
-		resp = &responseSpec{Error: err.Error()}
+		resp = &errorResponseSpec{Error: err.Error()}
 	}
 
 	// Encode the response send it back out over the socket.
