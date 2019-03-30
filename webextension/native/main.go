@@ -181,19 +181,10 @@ func sendWebExtensionMessage(w io.Writer, message []byte) error {
 // browser. Wait for the browser to send back a webExtensionRoundTripResponse
 // (which actually happens in inFromBrowserLoop--that function uses the ID to
 // find this goroutine again). Return a responseSpec object or an error.
-func roundTrip(conn net.Conn, outToBrowserChan chan<- []byte) (responseSpec, error) {
-	err := conn.SetReadDeadline(time.Now().Add(localReadTimeout))
-	if err != nil {
-		return nil, err
-	}
-	req, err := readRequestSpec(conn)
-	if err != nil {
-		return nil, err
-	}
-
+func roundTrip(req requestSpec, outToBrowserChan chan<- []byte) (responseSpec, error) {
 	// Generate an ID that will allow us to match a response to this request.
 	idRaw := make([]byte, 8)
-	_, err = rand.Read(idRaw)
+	_, err := rand.Read(idRaw)
 	if err != nil {
 		return nil, err
 	}
@@ -251,7 +242,16 @@ type errorResponseSpec struct {
 func handleConn(conn net.Conn, outToBrowserChan chan<- []byte) error {
 	defer conn.Close()
 
-	resp, err := roundTrip(conn, outToBrowserChan)
+	err := conn.SetReadDeadline(time.Now().Add(localReadTimeout))
+	if err != nil {
+		return err
+	}
+	req, err := readRequestSpec(conn)
+	if err != nil {
+		return err
+	}
+
+	resp, err := roundTrip(req, outToBrowserChan)
 	if err != nil {
 		resp = &errorResponseSpec{Error: err.Error()}
 	}
