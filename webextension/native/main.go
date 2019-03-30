@@ -2,7 +2,13 @@
 // purpose is to open a localhost TCP socket for communication with meek-client
 // in its --helper mode (the WebExtension cannot open a socket on its own). This
 // program is also in charge of multiplexing the many incoming socket
-// connections over the single shared stdio stream to/from the WebExtension.
+// connections over the single shared stdio stream to/from the browser.
+//
+// This program does minimal syntax checking. Apart from ensuring that the
+// messages are well-formed JSON with the correct top-level properties, and
+// inspecting the ID, it doesn't care about the contents of messages. It's the
+// responsibility of the browser half of the WebExtension to check everything
+// else.
 
 package main
 
@@ -44,14 +50,15 @@ const (
 	maxWebExtensionMessageLength = 1000000
 )
 
-// We receive multiple (possibly concurrent) connections over our listening
-// socket, and we must multiplex all their requests/responses to/from the
-// browser over the single shared stdio stream. When roundTrip sends a
-// webExtensionRoundTripRequest to the browser, creates a channel to receive the
-// response, and stores the ID–channel mapping in requestResponseMap. When
-// inFromBrowserLoop receives a webExtensionRoundTripResponse from the browser,
-// it is tagged with the same ID as the corresponding request. inFromBrowserLoop
-// looks up the matching channel and sends the response over it.
+// We receive multiple (possibly concurrent) connections over the listening
+// socket, and we must multiplex all their requests/results over the single
+// shared stdio stream to the browser. When roundTrip sends a request to the
+// browser, it tags the request with a random ID, creates a channel on which to
+// receive the result, and stores the ID–channel mapping in requestResponseMap.
+// When inFromBrowserLoop receives a webExtensionRoundTripResponse from the
+// browser, it will be tagged with an ID. inFromBrowserLoop looks up the channel
+// in requestResponseMap using the ID, and sends the result back on the channel
+// it finds.
 var requestResponseMap = make(map[string]chan<- responseSpec)
 var requestResponseMapLock sync.Mutex
 
@@ -84,13 +91,14 @@ type webExtensionRoundTripResponse struct {
 	Response responseSpec `json:"response"`
 }
 
-// Read a requestSpec (receive from "meek-client --helper").
+// Receive a requestSpec (from "meek-client --helper").
 //
 // The meek-client protocol is coincidentally similar to the WebExtension stdio
-// protocol: a 4-byte length, followed by a JSON object of that length. The only
-// difference is the byte order of the length: meek-client's is big-endian,
-// while WebExtension's is native-endian.
-func readRequestSpec(r io.Reader) (requestSpec, error) {
+// protocol: a 4-byte length, followed by a JSON object of that length. The main
+// differences are the byte order of the length prefix—meek-client's is
+// big-endian, while WebExtension's is native-endian—and that meek-client only
+// sends/receives one object per connection.
+func recvRequestSpec(r io.Reader) (requestSpec, error) {
 	var length uint32
 	err := binary.Read(r, binary.BigEndian, &length)
 	if err != nil {
@@ -106,8 +114,8 @@ func readRequestSpec(r io.Reader) (requestSpec, error) {
 		return nil, err
 	}
 
-	spec := new(requestSpec)
-	err = json.Unmarshal(encodedSpec, spec)
+	var spec requestSpec
+	err = json.Unmarshal(encodedSpec, &spec)
 	if err != nil {
 		return nil, err
 	}
@@ -115,13 +123,12 @@ func readRequestSpec(r io.Reader) (requestSpec, error) {
 	return spec, nil
 }
 
-// Write a responseSpec (send to "meek-client --helper").
-func writeResponseSpec(w io.Writer, spec responseSpec) error {
+// Send a responseSpec (to "meek-client --helper").
+func sendResponseSpec(w io.Writer, spec responseSpec) error {
 	encodedSpec, err := json.Marshal(spec)
 	if err != nil {
 		panic(err)
 	}
-
 	// len returns int, which is specified to be either 32 or 64 bits, so it
 	// will never be truncated when converting to uint64.
 	// https://golang.org/ref/spec#Numeric_types
@@ -133,7 +140,6 @@ func writeResponseSpec(w io.Writer, spec responseSpec) error {
 	if err != nil {
 		return err
 	}
-
 	_, err = w.Write(encodedSpec)
 	return err
 }
@@ -142,7 +148,7 @@ func writeResponseSpec(w io.Writer, spec responseSpec) error {
 // https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/Native_messaging#App_side
 func recvWebExtensionMessage(r io.Reader) ([]byte, error) {
 	var length uint32
-	err := binary.Read(r, NativeEndian, &length)
+	err := binary.Read(r, nativeEndian, &length)
 	if err != nil {
 		return nil, err
 	}
@@ -167,7 +173,7 @@ func sendWebExtensionMessage(w io.Writer, message []byte) error {
 	if uint64(length) > math.MaxUint32 {
 		return fmt.Errorf("WebExtension message is too long to represent: %d", length)
 	}
-	err := binary.Write(w, NativeEndian, uint32(length))
+	err := binary.Write(w, nativeEndian, uint32(length))
 	if err != nil {
 		return err
 	}
@@ -242,17 +248,20 @@ type errorResponseSpec struct {
 func handleConn(conn net.Conn, outToBrowserChan chan<- []byte) error {
 	defer conn.Close()
 
+	// Read and decode the request from the socket.
 	err := conn.SetReadDeadline(time.Now().Add(localReadTimeout))
 	if err != nil {
 		return err
 	}
-	req, err := readRequestSpec(conn)
+	req, err := recvRequestSpec(conn)
 	if err != nil {
 		return err
 	}
 
+	// Pass the parameters to the browser and get the result.
 	resp, err := roundTrip(req, outToBrowserChan)
 	if err != nil {
+		// In case of error in roundTrip, cook up an error response.
 		resp = &errorResponseSpec{Error: err.Error()}
 	}
 
@@ -261,7 +270,7 @@ func handleConn(conn net.Conn, outToBrowserChan chan<- []byte) error {
 	if err != nil {
 		return err
 	}
-	return writeResponseSpec(conn, resp)
+	return sendResponseSpec(conn, resp)
 }
 
 // Receive socket connections and dispatch them to handleConn.
@@ -306,15 +315,15 @@ func inFromBrowserLoop() error {
 		delete(requestResponseMap, resp.ID)
 		requestResponseMapLock.Unlock()
 
-		if !ok {
-			// Either the browser made up an ID that we never sent
-			// it, or (more likely) it took too long and roundTrip
-			// stopped waiting. Just drop the response on the floor.
-			continue
+		if ok {
+			responseSpecChan <- resp.Response
+			// Each socket Conn is good for one request–response exchange only.
+			close(responseSpecChan)
 		}
-		responseSpecChan <- resp.Response
-		// Each socket Conn is good for one request–response exchange only.
-		close(responseSpecChan)
+		// If !ok, it means that either the browser made up an ID that
+		// we never sent it, or (more likely) it took too long and
+		// roundTrip stopped waiting. In this case there's nothing to
+		// do.
 	}
 }
 
@@ -356,7 +365,7 @@ func main() {
 	go func() {
 		err := inFromBrowserLoop()
 		if err == io.EOF {
-			// EOF is not an error.
+			// EOF is not an error to display.
 			err = nil
 		}
 		errChan <- err
@@ -376,7 +385,7 @@ func main() {
 	outToBrowserChan <- message
 
 	// We quit when we receive a SIGTERM, or when our stdin is closed, or
-	// some irrecoverable error happens.
+	// some unrecoverable error happens.
 	// https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/Native_messaging#Closing_the_native_app
 	signal.Notify(signalChan, syscall.SIGTERM)
 	select {

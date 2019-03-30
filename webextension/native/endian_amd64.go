@@ -5,4 +5,4 @@ package main
 
 import "encoding/binary"
 
-var NativeEndian = binary.LittleEndian
+var nativeEndian = binary.LittleEndian
