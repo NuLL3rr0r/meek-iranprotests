@@ -127,8 +127,8 @@ const proxyMutex = new Mutex();
 async function roundtrip(params) {
     // Process the incoming request parameters and convert them into a Request.
     // https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#Parameters
-    let input = params.url;
-    let init = {
+    const input = params.url;
+    const init = {
         method: params.method,
         body: params.body != null ? base64_decode(params.body) : undefined,
         // headers will get further treatment below in headersFn.
@@ -152,7 +152,7 @@ async function roundtrip(params) {
     if (init.method !== "POST") {
         throw new Error("request spec failed validation: only POST is allowed");
     }
-    let request = new Request(input, init);
+    const request = new Request(input, init);
 
     // We need to use a webRequest.onBeforeSendHeaders listener to override
     // certain header fields, including Host (creating a Request with them in
@@ -162,7 +162,7 @@ async function roundtrip(params) {
     // used for a single request, by acquiring a lock here and releasing it
     // within the listener itself. The lock is acquired and released before any
     // network communication happens; i.e., it's fast.
-    let headersUnlock = await headersMutex.lock();
+    const headersUnlock = await headersMutex.lock();
     let headersCalled = false;
     function headersFn(details) {
         try {
@@ -202,7 +202,7 @@ async function roundtrip(params) {
 
     // Similarly, for controlling the proxy for each request, we set a
     // proxy.onRequest listener, use it for one request, then remove it.
-    let proxyUnlock = await proxyMutex.lock();
+    const proxyUnlock = await proxyMutex.lock();
     let proxyCalled = false;
     // async to make exceptions visible to proxy.onError.
     // https://bugzilla.mozilla.org/show_bug.cgi?id=1528873#c1
@@ -303,7 +303,7 @@ browser.webRequest.onErrorOccurred.addListener(
 browser.proxy.settings.set({value: {proxyType: "system", proxyDNS: false}});
 
 // Connect to our native process.
-let port = browser.runtime.connectNative("meek.http.helper");
+const port = browser.runtime.connectNative("meek.http.helper");
 
 port.onMessage.addListener(message => {
     switch (message.command) {
