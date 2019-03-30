@@ -124,42 +124,38 @@ function Mutex() {
 const headersMutex = new Mutex();
 const proxyMutex = new Mutex();
 
-async function roundtrip(request) {
-    // Process the incoming request spec and convert it into parameters to the
-    // fetch API. Also enforce some restrictions on what kinds of requests we
-    // are willing to make.
-    // https://developer.mozilla.org/en-US/docs/Web/API/WindowOrWorkerGlobalScope/fetch#Parameters
-    let url;
-    let init = {};
+async function roundtrip(params) {
+    // Process the incoming request parameters and convert them into a Request.
+    // https://developer.mozilla.org/en-US/docs/Web/API/Request/Request#Parameters
+    let input = params.url;
+    let init = {
+        method: params.method,
+        body: params.body != null ? base64_decode(params.body) : undefined,
+        // headers will get further treatment below in headersFn.
+        headers: params.header != null ? params.header : {},
+        // Do not read nor write from the browser's HTTP cache.
+        cache: "no-store",
+        // Don't send cookies.
+        credentials: "omit",
+        // Don't follow redirects (we'll get resp.status:0 if there is one).
+        redirect: "manual",
+    };
 
-    if (request.url == null) {
+    // Also enforce restrictions on what kinds of requests we are willing to
+    // make.
+    if (input == null) {
         throw new Error("request spec failed validation: missing \"url\"");
     }
-    if (!(request.url.startsWith("http://") || request.url.startsWith("https://"))) {
+    if (!(input.startsWith("http://") || input.startsWith("https://"))) {
         throw new Error("request spec failed validation: only http and https URLs are allowed");
     }
-    url = request.url;
-
-    if (request.method !== "POST") {
+    if (init.method !== "POST") {
         throw new Error("request spec failed validation: only POST is allowed");
     }
-    init.method = request.method;
-
-    // Don't set init.headers; that is handled in the onBeforeSendHeaders listener.
-
-    if (request.body != null && request.body !== "") {
-        init.body = base64_decode(request.body);
-    }
-
-    // Do not read nor write from the browser's HTTP cache.
-    init.cache = "no-store";
-    // Don't send cookies.
-    init.credentials = "omit";
-    // Don't follow redirects (we'll get resp.status:0 if there is one).
-    init.redirect = "manual";
+    let request = new Request(input, init);
 
     // We need to use a webRequest.onBeforeSendHeaders listener to override
-    // certain header fields, including Host (passing them to fetch in
+    // certain header fields, including Host (creating a Request with them in
     // init.headers does not work). But onBeforeSendHeaders is a global setting
     // (applies to all requests) and we need to be able to set different headers
     // per request. We make it so that any onBeforeSendHeaders listener is only
@@ -177,21 +173,21 @@ async function roundtrip(request) {
             }
             headersCalled = true;
 
-            // Convert request.header from object to array form.
-            // https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/webRequest/HttpHeaders
-            let headers = Object.entries(request.header != null ? request.header : {})
-                .map(x => ({name: x[0], value: x[1]}));
-            // Remove all browser headers that conflict with requested headers.
-            let overrides = {};
-            for (let name of Object.keys(headers)) {
-                overrides[name.toLowerCase()] = true;
+            let removals = new Map();
+            for (let name of Object.keys(init.headers)) {
+                removals.set(name.toLowerCase());
             }
             // Also remove some unnecessary or potentially tracking-enabling headers.
             for (let name of ["Accept", "Accept-Language", "Cookie", "Origin", "User-Agent"]) {
-                overrides[name.toLowerCase()] = true;
+                removals.set(name.toLowerCase());
             }
-            let browserHeaders = details.requestHeaders.filter(x => !(x.name.toLowerCase() in overrides));
-            return {requestHeaders: browserHeaders.concat(headers)};
+            let requestHeaders = details.requestHeaders.filter(header => !removals.has(header.name.toLowerCase()));
+            // Append the requested headers in array form.
+            // https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/webRequest/HttpHeaders
+            for (let [name, value] of Object.entries(init.headers)) {
+                requestHeaders.push({name, value});
+            }
+            return {requestHeaders};
         } catch (error) {
             // In case of any error in the code above, play it safe and cancel
             // the request.
@@ -220,7 +216,7 @@ async function roundtrip(request) {
             }
             proxyCalled = true;
 
-            return makeProxyInfo(request.proxy);
+            return makeProxyInfo(params.proxy);
         } finally {
             browser.proxy.onRequest.removeListener(proxyFn);
             proxyUnlock();
@@ -228,14 +224,14 @@ async function roundtrip(request) {
     }
 
     try {
-        // Set our listener that overrides the headers for this request.
+        // Set a listener that overrides the headers for this request.
         // https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/webRequest/onBeforeSendHeaders
         browser.webRequest.onBeforeSendHeaders.addListener(
             headersFn,
             {urls: ["http://*/*", "https://*/*"]},
             ["blocking", "requestHeaders"]
         );
-        // Set our listener that overrides the proxy for this request.
+        // Set a listener that overrides the proxy for this request.
         // https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/proxy/onRequest
         browser.proxy.onRequest.addListener(
             proxyFn,
@@ -243,9 +239,11 @@ async function roundtrip(request) {
         );
 
         // Now actually do the request and build a response object.
-        let resp = await fetch(url, init);
-        let body = await resp.arrayBuffer();
-        return {status: resp.status, body: base64_encode(body)};
+        let response = await fetch(request);
+        return {
+            status: response.status,
+            body: base64_encode(await response.arrayBuffer()),
+        };
     } finally {
         // With certain errors (e.g. an invalid URL), our onBeforeSendHeaders
         // and onRequest listeners may never get called, and therefore never
