@@ -336,7 +336,8 @@ port.onDisconnect.addListener(p => {
     // https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/runtime/Port#Type
     // "Note that in Google Chrome port.error is not supported: instead, use
     // runtime.lastError to get the error message."
-    if (p.error) {
-        console.log(`${browser.runtime.id}: disconnected because of error: ${p.error.message}`);
+    let error = p.error || browser.runtime.lastError;
+    if (error) {
+        console.log(`${browser.runtime.id}: disconnected because of error: ${error.message}`);
     }
 });
