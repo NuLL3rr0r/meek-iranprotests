@@ -192,6 +192,11 @@ async function roundtrip(request) {
             }
             let browserHeaders = details.requestHeaders.filter(x => !(x.name.toLowerCase() in overrides));
             return {requestHeaders: browserHeaders.concat(headers)};
+        } catch (error) {
+            // In case of any error in the code above, play it safe and cancel
+            // the request.
+            console.log(`${browser.runtime.id}: error in onBeforeSendHeaders: ${error.message}`);
+            return {cancel: true};
         } finally {
             // Now that the listener has been called, remove it and release the
             // lock to allow the next request to set a different listener.
