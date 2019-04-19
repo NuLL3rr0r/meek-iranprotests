@@ -315,6 +315,53 @@ func runMeekClient(helperAddr string, meekClientCommandLine []string) (cmd *exec
 	return cmd, nil
 }
 
+// Run firefox and meek-client and return the processes. When err is nil, both
+// processes were started successfully. If err is non-nil, one or both processes
+// may have failed to start. If a process did not start, its corresponding
+// return value will be nil. The caller is responsible for terminating whatever
+// processes were started, whether or not err is nil.
+func startProcesses(sigChan <-chan os.Signal, meekClientCommandLine []string) (firefoxCmd *exec.Cmd, meekClientCmd *exec.Cmd, err error) {
+	// Start firefox.
+	var stdout io.Reader
+	firefoxCmd, stdout, err = runFirefox()
+	if err != nil {
+		firefoxCmd = nil
+		err = fmt.Errorf("error running firefox: %v", err)
+		return
+	}
+
+	// Find out the helper's listening address.
+	addrChan := make(chan string)
+	errChan := make(chan error)
+	go func() {
+		addr, err := grepHelperAddr(stdout)
+		if err == nil {
+			addrChan <- addr
+		} else {
+			errChan <- err
+		}
+	}()
+	var helperAddr string
+	select {
+	case sig := <-sigChan:
+		err = fmt.Errorf("received signal %v before starting meek-client", sig)
+		return
+	case err = <-errChan:
+		err = fmt.Errorf("error looking for helper address: %v", err)
+		return
+	case helperAddr = <-addrChan:
+	}
+
+	// Start meek-client with the helper address.
+	meekClientCmd, err = runMeekClient(helperAddr, meekClientCommandLine)
+	if err != nil {
+		meekClientCmd = nil
+		err = fmt.Errorf("error running meek-client: %v", err)
+		return
+	}
+	return
+}
+
 func main() {
 	var logFilename string
 
@@ -361,48 +408,23 @@ func main() {
 		}()
 	}
 
-	// Start firefox.
-	firefoxCmd, stdout, err := runFirefox()
-	if err != nil {
-		log.Print(err)
-		return
-	}
-	defer logKill(firefoxCmd.Process)
-
-	// Find out the helper's listening address.
-	addrChan := make(chan string)
-	errChan := make(chan error)
-	go func() {
-		addr, err := grepHelperAddr(stdout)
-		if err == nil {
-			addrChan <- addr
-		} else {
-			errChan <- err
-		}
-	}()
-	var helperAddr string
-	select {
-	case sig := <-sigChan:
+	firefoxCmd, meekClientCmd, err := startProcesses(sigChan, meekClientCommandLine)
+	if err == nil {
+		// Both processes started successfully. Now let them run until
+		// we are instructed to stop.
+		sig := <-sigChan
 		log.Printf("sig %s", sig)
-		return
-	case err = <-errChan:
+		logSignal(meekClientCmd.Process, sig)
+	} else {
+		// Otherwise don't wait, go ahead and terminate whatever
+		// processes were started.
 		log.Print(err)
-		return
-	case helperAddr = <-addrChan:
 	}
 
-	// Start meek-client with the helper address.
-	meekClientCmd, err := runMeekClient(helperAddr, meekClientCommandLine)
-	if err != nil {
-		log.Print(err)
-		return
+	if firefoxCmd != nil {
+		logKill(firefoxCmd.Process)
 	}
-	defer logKill(meekClientCmd.Process)
-
-	sig := <-sigChan
-	log.Printf("sig %s", sig)
-	err = logSignal(meekClientCmd.Process, sig)
-	if err != nil {
-		log.Print(err)
+	if meekClientCmd != nil {
+		logKill(firefoxCmd.Process)
 	}
 }
