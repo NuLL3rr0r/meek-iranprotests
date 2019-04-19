@@ -56,26 +56,6 @@ type ptCmd struct {
 	StdinCloser io.WriteCloser
 }
 
-// Log a call to os.Process.Kill.
-func logKill(p *os.Process) error {
-	log.Printf("killing PID %d", p.Pid)
-	err := p.Kill()
-	if err != nil {
-		log.Print(err)
-	}
-	return err
-}
-
-// Log a call to os.Process.Signal.
-func logSignal(p *os.Process, sig os.Signal) error {
-	log.Printf("sending signal %s to PID %d", sig, p.Pid)
-	err := p.Signal(sig)
-	if err != nil {
-		log.Print(err)
-	}
-	return err
-}
-
 func copyFile(srcPath string, mode os.FileMode, destPath string) error {
 	inFile, err := os.Open(srcPath)
 	if err != nil {
