@@ -34,6 +34,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 )
@@ -413,25 +414,35 @@ func main() {
 		log.Print(err)
 	}
 
+	var wg sync.WaitGroup
 	if firefoxCmd != nil {
-		err := terminateCmd(firefoxCmd)
-		// We terminate Firefox with SIGTERM, so don't log an error
-		// if the exit status is "terminated by SIGTERM."
-		if err2, ok := err.(*exec.ExitError); ok {
-			if status, ok := err2.Sys().(syscall.WaitStatus); ok {
-				if status.Signaled() && status.Signal() == syscall.SIGTERM {
-					err = nil
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			err := terminateCmd(firefoxCmd)
+			// We terminate Firefox with SIGTERM, so don't log an
+			// error if the exit status is "terminated by SIGTERM."
+			if err2, ok := err.(*exec.ExitError); ok {
+				if status, ok := err2.Sys().(syscall.WaitStatus); ok {
+					if status.Signaled() && status.Signal() == syscall.SIGTERM {
+						err = nil
+					}
 				}
 			}
-		}
-		if err != nil {
-			log.Printf("error terminating firefox: %v", err)
-		}
+			if err != nil {
+				log.Printf("error terminating firefox: %v", err)
+			}
+		}()
 	}
 	if meekClientCmd != nil {
-		err := terminatePTCmd(meekClientCmd)
-		if err != nil {
-			log.Printf("error terminating meek-client: %v", err)
-		}
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			err := terminatePTCmd(meekClientCmd)
+			if err != nil {
+				log.Printf("error terminating meek-client: %v", err)
+			}
+		}()
 	}
+	wg.Wait()
 }
