@@ -202,7 +202,9 @@ func copyLoop(conn net.Conn, info *RequestInfo) error {
 			// log.Printf("read from local: %q", b)
 			ch <- b
 			if err != nil {
-				log.Printf("error reading from local: %s", err)
+				if err != io.EOF {
+					log.Printf("error reading from local: %s", err)
+				}
 				break
 			}
 		}
