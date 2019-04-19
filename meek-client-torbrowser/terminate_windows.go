@@ -6,8 +6,14 @@
 package main
 
 import (
+	"os/exec"
 	"time"
 )
+
+// Terminate a subprocess: on Windows all we can do is kill it.
+func terminateCmd(cmd *exec.Cmd) error {
+	return cmd.Process.Kill()
+}
 
 // Terminate a PT subprocess: first close its stdin; then kill it if that
 // doesn't work.
