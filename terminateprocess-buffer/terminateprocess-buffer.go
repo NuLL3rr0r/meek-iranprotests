@@ -42,7 +42,16 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	io.Copy(stdin, os.Stdin)
+	go func() {
+		_, err := io.Copy(stdin, os.Stdin)
+		if err != nil {
+			log.Fatalf("copying stdin: %v", err)
+		}
+		err = stdin.Close()
+		if err != nil {
+			log.Fatalf("closing stdin: %v", err)
+		}
+	}()
 	err = cmd.Wait()
 	if err != nil {
 		log.Fatal(err)
