@@ -43,7 +43,8 @@ These instructions require Firefox 65.
 4. Run Firefox in a terminal so you can see its stdout. In Firefox, go
    to about:config and set
        browser.dom.window.dump.enabled=true
-   This enables the extension to write to stdout.
+   This enables the extension to write to stdout. See firefox-user.js
+   for other prefs you may want to set.
 
 5. In Firefox, go to about:debugging and click "Load Temporary
    Add-on...". Find browser/manifest.json and click Open.
