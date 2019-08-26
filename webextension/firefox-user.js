@@ -21,6 +21,12 @@ user_pref("toolkit.startup.max_resumed_crashes", -1);
 // Don't raise software update windows in this browser instance.
 // https://trac.torproject.org/projects/tor/ticket/14203
 user_pref("app.update.enabled", false);
+// Firefox 63 removed the app.update.enabled pref. Instead, set the update check
+// interval very high and otherwise neuter it as much as possible.
+// https://bugzilla.mozilla.org/show_bug.cgi?id=1420514
+user_pref("app.update.interval", 999999999); // don't check for updates
+user_pref("app.update.auto", false); // if downloaded, don't automatically install
+user_pref("app.update.doorhanger", false); // don't show an update notice in the UI
 
 // Set a failsafe blackhole proxy of 127.0.0.1:9, to prevent network interaction
 // in case the user manages to open this profile with a normal browser UI (i.e.,
