@@ -35,19 +35,14 @@ with the --helper option pointing at a browser extension that has been
 set up separately. How it works is meek-client tells the browser what
 URL to request, the browser requests it and returns the payload to
 meek-client. The TLS implementation is that of the browser, so it better
-blends in with allowed traffic. A browser extensions for Firefox is in
-the firefox directory.
+blends in with allowed traffic. A browser extension for Firefox is in
+the webextension directory.
 
 Here is a summary of the programs that appear in subdirectories.
 
 appengine:
 Reflector web app that runs on Google App Engine. The reflector simply
 copies requests and responses to an instance of meek-server somewhere.
-
-firefox:
-Browser extension for TLS camouflage. Only works with versions of
-Firefox below 60.0. Use the extension in the webextension for newer
-versions of Firefox.
 
 meek-client:
 The client transport plugin, run by a censored client.
