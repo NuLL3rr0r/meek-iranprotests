@@ -300,6 +300,15 @@ browser.webRequest.onErrorOccurred.addListener(
 // Firefox 63 because of a bug.
 // https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/proxy/settings
 // https://bugzilla.mozilla.org/show_bug.cgi?id=1487121
+//
+// This proxy.settings.set call may cause a problem in Firefox 67+, because in
+// those versions, extensions additionally need the "Run in Private Windows"
+// permission to use proxy.settings.set at all (not only in private windows).
+// Lacking the permission, you get an error in the browser console: "Error:
+// proxy.settings requires private browsing permission." We will need to find a
+// way to install the extension such that it has the necessary permission.
+// https://bugzilla.mozilla.org/show_bug.cgi?id=1525447
+// https://bugzilla.mozilla.org/show_bug.cgi?id=1526299
 browser.proxy.settings.set({value: {proxyType: "system", proxyDNS: false}});
 
 // Connect to our native process.
