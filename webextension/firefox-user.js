@@ -27,6 +27,7 @@ user_pref("app.update.enabled", false);
 user_pref("app.update.interval", 999999999); // don't check for updates
 user_pref("app.update.auto", false); // if downloaded, don't automatically install
 user_pref("app.update.doorhanger", false); // don't show an update notice in the UI
+user_pref("app.update.checkInstallTime", false); // don't check based on date of build ID
 
 // Set a failsafe blackhole proxy of 127.0.0.1:9, to prevent network interaction
 // in case the user manages to open this profile with a normal browser UI (i.e.,
