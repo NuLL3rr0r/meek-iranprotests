@@ -273,7 +273,7 @@ func genSessionID() string {
 }
 
 // Callback for new SOCKS requests.
-func handler(conn *pt.SocksConn) error {
+func handleSOCKS(conn *pt.SocksConn) error {
 	defer conn.Close()
 	err := conn.Grant(&net.TCPAddr{IP: net.IPv4zero, Port: 0})
 	if err != nil {
@@ -336,7 +336,7 @@ func handler(conn *pt.SocksConn) error {
 	return copyLoop(conn, &info)
 }
 
-func acceptLoop(ln *pt.SocksListener) error {
+func acceptSOCKS(ln *pt.SocksListener) error {
 	defer ln.Close()
 	for {
 		conn, err := ln.AcceptSocks()
@@ -348,7 +348,7 @@ func acceptLoop(ln *pt.SocksListener) error {
 			return err
 		}
 		go func() {
-			err := handler(conn)
+			err := handleSOCKS(conn)
 			if err != nil {
 				log.Printf("error in handling request: %s", err)
 			}
@@ -484,7 +484,7 @@ func main() {
 				pt.CmethodError(methodName, err.Error())
 				break
 			}
-			go acceptLoop(ln)
+			go acceptSOCKS(ln)
 			pt.Cmethod(methodName, ln.Version(), ln.Addr())
 			log.Printf("listening on %s", ln.Addr())
 			listeners = append(listeners, ln)
