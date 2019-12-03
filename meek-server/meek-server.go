@@ -169,21 +169,17 @@ func (state *State) GetSession(sessionID string, req *http.Request) (*Session, e
 // scrubbedAddr is a phony net.Addr that returns "[scrubbed]" for all calls.
 type scrubbedAddr struct{}
 
-func (a scrubbedAddr) Network() string {
-	return "[scrubbed]"
-}
-func (a scrubbedAddr) String() string {
-	return "[scrubbed]"
-}
+func (a scrubbedAddr) Network() string { return "[scrubbed]" }
+func (a scrubbedAddr) String() string  { return "[scrubbed]" }
 
 // Replace the Addr in a net.OpError with "[scrubbed]" for logging.
 func scrubError(err error) error {
-	if operr, ok := err.(*net.OpError); ok {
+	if err, ok := err.(*net.OpError); ok {
 		// net.OpError contains Op, Net, Addr, and a subsidiary Err. The
 		// (Op, Net, Addr) part is responsible for error text prefixes
 		// like "read tcp X.X.X.X:YYYY:". We want that information but
 		// don't want to log the literal address.
-		operr.Addr = scrubbedAddr{}
+		err.Addr = scrubbedAddr{}
 	}
 	return err
 }
