@@ -132,6 +132,8 @@ func makeRequest(buf []byte, info *RequestInfo) (*http.Request, error) {
 		body = bytes.NewReader(buf)
 	}
 	req, err := http.NewRequest("POST", info.URL.String(), body)
+	// Prevent Content-Type sniffing by net/http and middleboxes.
+	req.Header.Set("Content-Type", "application/octet-stream")
 	if err != nil {
 		return nil, err
 	}
