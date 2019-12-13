@@ -498,12 +498,9 @@ func main() {
 	sig := <-sigChan
 	log.Printf("got signal %s", sig)
 
-	/*
-		// Not supported until go1.8.
-		for _, server := range servers {
-			server.Close()
-		}
-	*/
+	for _, server := range servers {
+		server.Close()
+	}
 
 	log.Printf("done")
 }
